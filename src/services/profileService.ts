@@ -29,14 +29,14 @@ export async function getProfile(): Promise<ProfileData | null> {
     
     if (error) throw error;
     
-    // Cast data to ensure TypeScript recognizes the role field
-    const profileData = data as ProfileData;
-    
-    // Combine profile data with user email
-    return {
-      ...profileData,
+    // Ensure the data has a role property, default to 'job_seeker' if not present
+    const profileData: ProfileData = {
+      ...data,
+      role: data.role || 'job_seeker',
       email: user.email
     };
+    
+    return profileData;
     
   } catch (error: any) {
     console.error("Error fetching profile:", error);
@@ -101,12 +101,11 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
     
     if (error) throw error;
     
-    // Fix: Ensure returned data includes the role field
-    // If role is missing, default to 'job_seeker'
-    const profileData = {
+    // Ensure the data has a role field with a default value
+    const profileData: ProfileData = {
       ...data,
       role: data.role || 'job_seeker'
-    } as ProfileData;
+    };
     
     return profileData;
     
