@@ -90,7 +90,7 @@ export async function updatePassword(
   }
 }
 
-// New function to get profile by username
+// Get profile by username
 export async function getProfileByUsername(username: string): Promise<ProfileData | null> {
   try {
     const { data, error } = await supabase
@@ -101,8 +101,14 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
     
     if (error) throw error;
     
-    // Cast data to ensure TypeScript recognizes the role field
-    return data as ProfileData;
+    // Fix: Ensure returned data includes the role field
+    // If role is missing, default to 'job_seeker'
+    const profileData = {
+      ...data,
+      role: data.role || 'job_seeker'
+    } as ProfileData;
+    
+    return profileData;
     
   } catch (error: any) {
     console.error("Error fetching profile by username:", error);

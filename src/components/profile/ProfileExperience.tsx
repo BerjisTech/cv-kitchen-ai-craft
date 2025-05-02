@@ -2,8 +2,13 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, GraduationCap } from 'lucide-react';
+import { ProfileData } from '@/services/profileService';
 
-export const ProfileExperience: React.FC = () => {
+interface ProfileExperienceProps {
+  profile: ProfileData | null;
+}
+
+export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile }) => {
   const workExperience = [
     {
       title: 'Senior Frontend Developer',

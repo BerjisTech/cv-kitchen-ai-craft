@@ -4,8 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Phone, MapPin, Github, Linkedin, Twitter } from 'lucide-react';
+import { ProfileData } from '@/services/profileService';
 
-export const ProfileContact: React.FC = () => {
+interface ProfileContactProps {
+  profile: ProfileData | null;
+}
+
+export const ProfileContact: React.FC<ProfileContactProps> = ({ profile }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card className="glass-card">
@@ -16,15 +21,15 @@ export const ProfileContact: React.FC = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
             <Mail className="text-muted-foreground" size={18} />
-            <span>john.doe@example.com</span>
+            <span>{profile?.email || 'Email not available'}</span>
           </div>
           <div className="flex items-center gap-3">
             <Phone className="text-muted-foreground" size={18} />
-            <span>+1 (555) 123-4567</span>
+            <span>{profile?.phone || 'Phone not available'}</span>
           </div>
           <div className="flex items-center gap-3">
             <MapPin className="text-muted-foreground" size={18} />
-            <span>San Francisco, CA, USA</span>
+            <span>{profile?.location || 'Location not available'}</span>
           </div>
           
           <div className="border-t border-border pt-4 mt-6">

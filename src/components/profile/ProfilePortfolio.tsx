@@ -3,8 +3,13 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Github } from 'lucide-react';
+import { ProfileData } from '@/services/profileService';
 
-export const ProfilePortfolio: React.FC = () => {
+interface ProfilePortfolioProps {
+  profile: ProfileData | null;
+}
+
+export const ProfilePortfolio: React.FC<ProfilePortfolioProps> = ({ profile }) => {
   const projects = [
     {
       title: 'E-commerce Dashboard',
