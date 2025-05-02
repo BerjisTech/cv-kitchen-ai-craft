@@ -19,6 +19,8 @@ import Settings from "./pages/Settings";
 import PublicProfile from "./pages/PublicProfile";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -46,6 +48,12 @@ const App: React.FC = () => {
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    
+                    {/* Recruiter Routes */}
+                    <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
+                    
+                    {/* Admin Routes */}
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   </Route>
                   
                   <Route path="/public-profile" element={<PublicProfile />} />

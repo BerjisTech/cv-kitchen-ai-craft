@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { User, Settings, LogOut } from "lucide-react";
 
 export const UserMenu = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, userRole } = useAuth();
   
   if (!user) {
     return null;
@@ -33,6 +33,12 @@ export const UserMenu = () => {
     }
     
     return "U";
+  };
+  
+  // Format role for display
+  const formatRole = (role: string | null) => {
+    if (!role) return '';
+    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   return (
@@ -56,6 +62,11 @@ export const UserMenu = () => {
             <p className="text-xs text-muted-foreground truncate">
               {user.email}
             </p>
+            {userRole && (
+              <p className="text-xs font-medium text-primary">
+                {formatRole(userRole)}
+              </p>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -5,13 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 
+export type UserRole = 'job_seeker' | 'recruiter' | 'staff' | 'superadmin';
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  userRole: UserRole | null;
+  activeRole: UserRole | null;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  switchRole: (role: UserRole) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -28,8 +34,32 @@ export function useAuth() {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  
+  // Fetch user role from profiles table
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      setUserRole(data.role);
+      // Set activeRole to the user's main role initially
+      if (!activeRole) {
+        setActiveRole(data.role);
+      }
+      
+    } catch (error: any) {
+      console.error("Error fetching user role:", error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -41,8 +71,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Show toast notifications for auth events
         if (event === 'SIGNED_IN') {
           toast.success("Successfully signed in");
+          
+          // Fetch user role when signed in
+          if (session?.user) {
+            setTimeout(() => {
+              fetchUserRole(session.user.id);
+            }, 0);
+          }
         } else if (event === 'SIGNED_OUT') {
           toast.info("Signed out");
+          setUserRole(null);
+          setActiveRole(null);
         }
       }
     );
@@ -51,6 +90,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Fetch user role for initial session
+      if (session?.user) {
+        fetchUserRole(session.user.id);
+      }
+      
       setIsLoading(false);
     });
 
@@ -131,14 +176,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   };
+  
+  // Function to switch between roles
+  const switchRole = async (role: UserRole) => {
+    try {
+      if (!user) return;
+      
+      // Only allow switching between job_seeker and recruiter unless admin
+      if (
+        (role === 'job_seeker' || role === 'recruiter') || 
+        (userRole === 'staff' || userRole === 'superadmin')
+      ) {
+        setActiveRole(role);
+        toast.success(`Switched to ${role.replace('_', ' ')} view`);
+        
+        // Navigate to appropriate page based on role
+        if (role === 'job_seeker') {
+          navigate('/dashboard');
+        } else if (role === 'recruiter') {
+          navigate('/recruiter/dashboard');
+        } else if (role === 'staff' || role === 'superadmin') {
+          navigate('/admin/dashboard');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Error switching roles");
+      console.error("Error switching roles:", error);
+    }
+  };
+  
+  // Calculate if user is an admin (staff or superadmin)
+  const isAdmin = userRole === 'staff' || userRole === 'superadmin';
 
   const value = {
     session,
     user,
+    userRole,
+    activeRole,
+    isAdmin,
     signIn,
     signInWithGoogle,
     signUp,
     signOut,
+    switchRole,
     isLoading,
   };
 

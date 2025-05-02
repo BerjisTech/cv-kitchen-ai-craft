@@ -1,13 +1,13 @@
-
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
+import { RoleSwitcher } from "@/components/auth/RoleSwitcher";
 
-export const TopSearchBar: React.FC = () => {
+export const TopSearchBar = () => {
   const [focused, setFocused] = useState(false);
   
   return (
-    <div className="flex items-center justify-between w-full h-16 px-4 border-b border-slate-200">
+    <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div 
         className={`
           relative max-w-xl transition-all duration-300
@@ -40,7 +40,8 @@ export const TopSearchBar: React.FC = () => {
         )}
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+        <RoleSwitcher />
         <UserMenu />
       </div>
     </div>
