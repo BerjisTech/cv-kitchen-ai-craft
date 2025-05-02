@@ -3,7 +3,8 @@ import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, MapPin, Calendar, Edit } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Profile = () => {
   return (
@@ -40,10 +41,16 @@ const Profile = () => {
                 <span>Member since Jan 2023</span>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-2">
               <Button variant="outline" className="w-full gap-2">
                 <Edit size={16} />
                 Edit Profile
+              </Button>
+              <Button className="w-full gap-2" asChild>
+                <Link to="/public-profile">
+                  <ExternalLink size={16} />
+                  View Public Profile
+                </Link>
               </Button>
             </CardFooter>
           </Card>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LeftSidebarProps {
@@ -18,6 +18,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
     { name: 'Shelf', href: '/shelf', icon: BookOpen },
     { name: 'Analytics', href: '/analytics', icon: LineChart },
     { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Public Profile', href: '/public-profile', icon: ExternalLink },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
