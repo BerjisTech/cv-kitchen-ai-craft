@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
+import { UserMenu } from '@/components/auth/UserMenu';
 
 export const TopSearchBar: React.FC = () => {
   const [focused, setFocused] = useState(false);
   
   return (
-    <div className="flex items-center justify-center w-full h-16 px-4 border-b border-slate-200">
+    <div className="flex items-center justify-between w-full h-16 px-4 border-b border-slate-200">
       <div 
         className={`
-          relative max-w-xl w-full transition-all duration-300
+          relative max-w-xl transition-all duration-300
           ${focused ? 'w-full' : 'w-3/4'}
         `}
       >
@@ -37,6 +38,10 @@ export const TopSearchBar: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <UserMenu />
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 interface LeftSidebarProps {
   collapsed: boolean;
@@ -11,6 +12,7 @@ interface LeftSidebarProps {
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
+  const { user } = useAuth();
   
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -82,17 +84,27 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
       
       <div className="p-4">
         {!collapsed && (
-          <div className="p-3 rounded-lg bg-primary/5 backdrop-blur-sm border border-primary/10">
-            <p className="text-xs text-muted-foreground">
-              Free account
-            </p>
-            <Link 
-              to="/settings?tab=billing" 
-              className="text-xs font-medium mt-1 hover:text-primary transition-colors block"
+          user ? (
+            <div className="p-3 rounded-lg bg-primary/5 backdrop-blur-sm border border-primary/10">
+              <p className="text-xs text-muted-foreground">
+                Free account
+              </p>
+              <Link 
+                to="/settings?tab=billing" 
+                className="text-xs font-medium mt-1 hover:text-primary transition-colors block"
+              >
+                Upgrade to Pro
+              </Link>
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
             >
-              Upgrade to Pro
+              <LogIn size={18} />
+              <span className="font-medium">Sign In</span>
             </Link>
-          </div>
+          )
         )}
       </div>
     </div>
