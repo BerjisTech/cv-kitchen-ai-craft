@@ -38,14 +38,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ collapsed, onToggleC
       <div className="flex-1 p-4">
         <div className="flex flex-col items-center gap-6 mt-4">
           {actions.map((action) => (
-            <div key={action.name} className="relative group">
+            <div key={action.name} className="relative group w-full">
               <button 
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm flex items-center justify-center hover:bg-primary/10 transition-colors"
+                className={cn(
+                  "rounded-lg backdrop-blur-sm border border-white/20 shadow-sm flex items-center hover:bg-primary/10 transition-colors",
+                  collapsed 
+                    ? "w-10 h-10 justify-center rounded-full bg-white/10" 
+                    : "w-full p-3 justify-start gap-3 bg-white/5"
+                )}
               >
                 <action.icon 
                   size={20} 
                   className="text-muted-foreground group-hover:text-primary"
                 />
+                
+                {!collapsed && (
+                  <span className="text-sm font-medium">{action.name}</span>
+                )}
               </button>
               
               {action.badge && (
@@ -54,7 +63,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ collapsed, onToggleC
                 </span>
               )}
               
-              {!collapsed && (
+              {collapsed && (
                 <span className="absolute left-14 top-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-sm">
                   {action.name}
                 </span>
