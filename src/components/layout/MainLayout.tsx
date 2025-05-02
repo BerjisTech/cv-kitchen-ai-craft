@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { LeftSidebar } from './LeftSidebar';
 import { TopSearchBar } from './TopSearchBar';
 import { RightSidebar } from './RightSidebar';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
