@@ -10,6 +10,8 @@ type ThemeProviderProps = {
 type ThemeContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  colorPalette: string;
+  setColorPalette: (paletteId: string) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -30,6 +32,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     return "light";
   });
 
+  const [colorPalette, setColorPalette] = useState(() => {
+    return localStorage.getItem("colorPalette") || "indigo";
+  });
+
   useEffect(() => {
     const root = window.document.documentElement;
     
@@ -47,6 +53,14 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     // Store theme preference
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    // Store color palette preference
+    localStorage.setItem("colorPalette", colorPalette);
+    
+    // Here you would apply the color palette CSS variables
+    // This is where you would modify CSS variables based on the selected palette
+  }, [colorPalette]);
   
   // Listen for system theme changes
   useEffect(() => {
@@ -65,7 +79,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, colorPalette, setColorPalette }}>
       {children}
     </ThemeContext.Provider>
   );

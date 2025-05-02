@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
+import { ColorPaletteSelector } from '@/components/theme/ColorPaletteSelector';
 
 const Settings = () => {
   return (
@@ -100,6 +102,8 @@ const Settings = () => {
                 </div>
               </CardContent>
             </Card>
+            
+            <ColorPaletteSelector />
           </TabsContent>
           
           <TabsContent value="notifications" className="space-y-6">
