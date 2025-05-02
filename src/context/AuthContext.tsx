@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,13 +51,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error("Error fetching user role:", error);
-        throw error;
+        setIsLoading(false);
+        return null;
       }
       
       console.log('User role data from DB:', data);
       
       // Use type assertion since we know the structure is correct
-      // This is necessary because TypeScript's type definitions haven't been updated yet
       const profileData = data as unknown as { role: UserRole };
       
       setUserRole(profileData.role);
@@ -66,9 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Set user role to:', profileData.role);
+      setIsLoading(false);
+      return profileData.role;
       
     } catch (error: any) {
       console.error("Error fetching user role:", error);
+      setIsLoading(false);
+      return null;
     }
   };
 
@@ -86,14 +91,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Fetch user role when signed in
           if (session?.user) {
-            setTimeout(() => {
-              fetchUserRole(session.user.id);
-            }, 0);
+            fetchUserRole(session.user.id);
+          } else {
+            setIsLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
           toast.info("Signed out");
           setUserRole(null);
           setActiveRole(null);
+          setIsLoading(false);
         }
       }
     );
@@ -129,7 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       toast.error(error.message || "Error signing in");
       console.error("Error signing in:", error);
-    } finally {
       setIsLoading(false);
     }
   };

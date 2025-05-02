@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,15 @@ const Auth = () => {
   const [password, setPassword] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
   
-  const { signIn, signUp, signInWithGoogle, isLoading } = useAuth();
+  const { signIn, signUp, signInWithGoogle, isLoading, user } = useAuth();
+  const navigate = useNavigate();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
