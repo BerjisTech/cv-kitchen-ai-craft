@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Download, Eye, Edit } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FileText, Eye, Edit, Download } from 'lucide-react';
 
 interface CVCardProps {
   title: string;
@@ -22,9 +21,9 @@ export const CVCard: React.FC<CVCardProps> = ({
   category
 }) => {
   return (
-    <div className="glass-card overflow-hidden flex flex-col h-full border border-white/10">
+    <div className="bg-muted/30 rounded-lg overflow-hidden flex flex-col h-full border border-border/20">
       {/* CV Thumbnail */}
-      <div className="aspect-[3/4] relative overflow-hidden bg-muted/20">
+      <div className="aspect-[3/4] relative overflow-hidden bg-muted/20 flex items-center justify-center">
         {thumbnailUrl ? (
           <img 
             src={thumbnailUrl} 
@@ -32,37 +31,30 @@ export const CVCard: React.FC<CVCardProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="p-6 bg-white/90 rounded-lg">
-              <h3 className="font-semibold">{title}</h3>
-              {position && <p className="text-sm text-muted-foreground mt-1">{position}</p>}
-            </div>
-          </div>
+          <FileText className="h-16 w-16 text-muted-foreground/60" />
         )}
       </div>
       
       {/* CV Info */}
       <div className="p-4 flex-1">
-        <div>
-          <h3 className="font-medium">{title}</h3>
-          {company && <p className="text-sm text-muted-foreground">{company}</p>}
-          {category && <p className="text-sm text-muted-foreground">{category}</p>}
-        </div>
+        <h3 className="font-medium">{title}</h3>
+        {category && <p className="text-sm text-muted-foreground">{category}</p>}
+        {company && <p className="text-sm text-muted-foreground">{company}</p>}
       </div>
       
       {/* Actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border/20">
         <p className="text-xs text-muted-foreground">{lastUpdated}</p>
         <div className="flex items-center gap-2">
-          <button className="text-gray-500 hover:text-gray-700">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <Eye size={16} />
-          </button>
-          <button className="text-gray-500 hover:text-gray-700">
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <Edit size={16} />
-          </button>
-          <button className="text-gray-500 hover:text-gray-700">
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <Download size={16} />
-          </button>
+          </Button>
         </div>
       </div>
     </div>
