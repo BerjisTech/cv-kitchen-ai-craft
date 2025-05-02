@@ -41,7 +41,10 @@ const AuthCallback = () => {
           const identities = data.session.user.identities || [];
           
           // Extract the right identity for this provider
-          const identity = identities.find((id: any) => id.provider === provider);
+          const identity = identities.find((id: any) => 
+            (id.provider === provider) || 
+            (provider === 'linkedin' && id.provider === 'linkedin_oidc')
+          );
           
           if (identity) {
             const { error: connectionError } = await supabase

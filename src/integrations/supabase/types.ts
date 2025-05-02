@@ -45,6 +45,81 @@ export type Database = {
         }
         Relationships: []
       }
+      user_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          profile_url: string | null
+          provider: string
+          provider_id: string
+          refresh_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          profile_url?: string | null
+          provider: string
+          provider_id: string
+          refresh_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          profile_url?: string | null
+          provider?: string
+          provider_id?: string
+          refresh_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          filepath: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          filepath: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          filepath?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

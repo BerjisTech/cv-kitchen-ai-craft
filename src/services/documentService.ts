@@ -23,14 +23,13 @@ export async function getUserDocuments(type?: string): Promise<UserDocument[]> {
     let query = supabase
       .from('user_documents')
       .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.id);
       
     if (type) {
       query = query.eq('document_type', type);
     }
     
-    const { data, error } = await query;
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) throw error;
     

@@ -59,7 +59,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
         const file = files[i];
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `cvs/${fileName}`;
+        const filePath = `${fileName}`;
         
         // Check file type and size
         if (!['pdf', 'docx', 'jpg', 'png'].includes(fileExt?.toLowerCase() || '')) {
@@ -72,15 +72,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
           continue;
         }
         
-        const { error } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('career-uploads')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false
           });
           
-        if (error) {
-          console.error("Error uploading file:", error);
+        if (uploadError) {
+          console.error("Error uploading file:", uploadError);
           toast.error(`Error uploading ${file.name}`);
         } else {
           // Save file metadata to database
