@@ -2,6 +2,9 @@
 import React, { useState, useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 interface FileUploaderProps {
   onUpload: (files: FileList) => void;
@@ -9,7 +12,9 @@ interface FileUploaderProps {
 
 export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -20,11 +25,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
     setIsDragging(false);
   };
   
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleFiles(e.dataTransfer.files);
       onUpload(e.dataTransfer.files);
     }
   };
@@ -33,9 +39,75 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
     fileInputRef.current?.click();
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      await handleFiles(e.target.files);
       onUpload(e.target.files);
+    }
+  };
+  
+  const handleFiles = async (files: FileList) => {
+    if (!user) {
+      toast.error("You must be logged in to upload files");
+      return;
+    }
+    
+    setIsUploading(true);
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `cvs/${fileName}`;
+        
+        // Check file type and size
+        if (!['pdf', 'docx', 'jpg', 'png'].includes(fileExt?.toLowerCase() || '')) {
+          toast.error(`Unsupported file type: ${fileExt}`);
+          continue;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) { // 10MB
+          toast.error("File size exceeds 10MB limit");
+          continue;
+        }
+        
+        const { error } = await supabase.storage
+          .from('career-uploads')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+          
+        if (error) {
+          console.error("Error uploading file:", error);
+          toast.error(`Error uploading ${file.name}`);
+        } else {
+          // Save file metadata to database
+          const { error: dbError } = await supabase
+            .from('user_documents')
+            .insert({
+              user_id: user.id,
+              filename: file.name,
+              filepath: filePath,
+              document_type: 'cv',
+              file_size: file.size,
+              file_type: file.type
+            });
+            
+          if (dbError) {
+            console.error("Error saving file metadata:", dbError);
+            toast.error("Error saving file information");
+          } else {
+            toast.success(`${file.name} uploaded successfully`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in file upload:", error);
+      toast.error("An error occurred during upload");
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -63,8 +135,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onUpload }) => {
         <Button 
           onClick={handleFileSelect}
           className="bg-blue-500 hover:bg-blue-600"
+          disabled={isUploading}
         >
-          Select Files
+          {isUploading ? "Uploading..." : "Select Files"}
         </Button>
         
         <input 
