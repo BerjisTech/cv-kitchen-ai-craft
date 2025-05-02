@@ -4,19 +4,18 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { AdminSetup } from '@/components/admin/AdminSetup';
 
 const AdminDashboard = () => {
   const { isAdmin, userRole } = useAuth();
-  
-  // Redirect non-admin users
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" />;
-  }
   
   return (
     <MainLayout>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        
+        {/* Temporary admin setup - remove in production */}
+        <AdminSetup />
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>

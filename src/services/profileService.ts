@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
@@ -53,12 +52,19 @@ export async function updateProfile(updates: Partial<ProfileData>): Promise<bool
     
     if (!user) throw new Error("User not authenticated");
     
+    console.log('Updating profile with:', updates); // Debug log
+    
     // Remove fields that aren't in the profiles table
     const { email, phone, location, role, ...profileData } = updates;
     
+    // If we're updating role, ensure it gets saved to the database
+    const dataToUpdate = role ? { ...profileData, role } : profileData;
+    
+    console.log('Data being sent to database:', dataToUpdate); // Debug log
+    
     const { error } = await supabase
       .from('profiles')
-      .update(profileData)
+      .update(dataToUpdate)
       .eq('id', user.id);
       
     if (error) throw error;

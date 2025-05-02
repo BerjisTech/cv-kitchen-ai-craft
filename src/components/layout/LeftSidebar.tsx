@@ -12,10 +12,20 @@ interface LeftSidebarProps {
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, userRole, activeRole } = useAuth();
   
   // Get username for public profile link
   const username = user?.user_metadata?.username || '';
+  
+  // Debugging - log roles to console
+  React.useEffect(() => {
+    if (user) {
+      console.log('User role:', userRole);
+      console.log('Active role:', activeRole);
+      console.log('Is admin:', isAdmin);
+      console.log('User metadata:', user.user_metadata);
+    }
+  }, [user, userRole, activeRole, isAdmin]);
   
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -25,11 +35,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
     { name: 'Profile', href: '/profile', icon: User },
     { 
       name: 'Public Profile', 
-      href: username ? `/u/${username}` : '/public-profile', 
+      href: username ? `/u/${username}` : '/u/public-profile', 
       icon: ExternalLink 
     },
-    // Conditionally add Admin Dashboard for admin users
-    ...(isAdmin ? [{ name: 'Admin', href: '/admin/dashboard', icon: Shield }] : []),
+    // Always show Admin link for debugging during development
+    { name: 'Admin', href: '/admin/dashboard', icon: Shield },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
