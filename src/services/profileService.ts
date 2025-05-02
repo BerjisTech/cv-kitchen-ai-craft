@@ -63,6 +63,14 @@ export async function updateProfile(updates: Partial<ProfileData>): Promise<bool
       
     if (error) throw error;
     
+    // Update the user metadata with the username if it was changed
+    // This will make it available in user.user_metadata.username
+    if (profileData.username) {
+      await supabase.auth.updateUser({
+        data: { username: profileData.username }
+      });
+    }
+    
     toast.success("Profile updated successfully");
     return true;
   } catch (error: any) {

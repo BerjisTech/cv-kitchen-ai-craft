@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink, LogIn } from 'lucide-react';
+import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink, LogIn, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 
@@ -12,7 +12,10 @@ interface LeftSidebarProps {
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  
+  // Get username for public profile link
+  const username = user?.user_metadata?.username || '';
   
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -20,7 +23,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
     { name: 'Shelf', href: '/shelf', icon: BookOpen },
     { name: 'Analytics', href: '/analytics', icon: LineChart },
     { name: 'Profile', href: '/profile', icon: User },
-    { name: 'Public Profile', href: '/public-profile', icon: ExternalLink },
+    { 
+      name: 'Public Profile', 
+      href: username ? `/u/${username}` : '/public-profile', 
+      icon: ExternalLink 
+    },
+    // Conditionally add Admin Dashboard for admin users
+    ...(isAdmin ? [{ name: 'Admin', href: '/admin/dashboard', icon: Shield }] : []),
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
