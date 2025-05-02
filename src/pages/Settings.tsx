@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { ColorPaletteSelector } from '@/components/theme/ColorPaletteSelector';
+import { BillingSection } from '@/components/billing/BillingSection';
 
 const Settings = () => {
   return (
@@ -22,6 +22,7 @@ const Settings = () => {
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="privacy">Privacy & Security</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
           </TabsList>
           
           <TabsContent value="account" className="space-y-6">
@@ -180,6 +181,10 @@ const Settings = () => {
                 <Button variant="destructive">Delete Account</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="billing" className="space-y-6">
+            <BillingSection />
           </TabsContent>
         </Tabs>
       </div>
