@@ -1,9 +1,26 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight, ExternalLink, LogIn, Shield } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Utensils, 
+  BookOpen, 
+  LineChart, 
+  Settings, 
+  User, 
+  ChevronLeft, 
+  ChevronRight, 
+  ExternalLink, 
+  LogIn, 
+  Shield, 
+  ChevronDown 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { 
+  Collapsible, 
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from "@/components/ui/collapsible";
 
 interface LeftSidebarProps {
   collapsed: boolean;
@@ -13,6 +30,7 @@ interface LeftSidebarProps {
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
   const { user, isAdmin, userRole, activeRole } = useAuth();
+  const [adminExpanded, setAdminExpanded] = useState(location.pathname.startsWith('/admin'));
   
   // Get username for public profile link
   const username = user?.user_metadata?.username || '';
@@ -38,9 +56,21 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
       href: username ? `/u/${username}` : '/u/public-profile', 
       icon: ExternalLink 
     },
-    // Always show Admin link for debugging during development
-    { name: 'Admin', href: '/admin/dashboard', icon: Shield },
     { name: 'Settings', href: '/settings', icon: Settings },
+  ];
+
+  // Admin section links
+  const adminLinks = [
+    { name: 'Admin Dashboard', href: '/admin/dashboard' },
+    { name: 'Analytics', href: '/admin/analytics' },
+    { name: 'Users', href: '/admin/users' },
+    { name: 'Jobs', href: '/admin/jobs' },
+    { name: 'Billing', href: '/admin/billing' },
+    { name: 'AI Management', href: '/admin/ai' },
+    { name: 'Content', href: '/admin/content' },
+    { name: 'Roles', href: '/admin/roles' },
+    { name: 'Communications', href: '/admin/communications' },
+    { name: 'System', href: '/admin/system' }
   ];
 
   return (
@@ -67,7 +97,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
         </button>
       </div>
       
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;
           
@@ -99,6 +129,73 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
             </Link>
           );
         })}
+        
+        {/* Admin section with collapsible menu */}
+        {isAdmin && (
+          <Collapsible
+            open={adminExpanded}
+            onOpenChange={setAdminExpanded}
+            className={cn(
+              "mt-4 pt-4 border-t border-white/10",
+              collapsed && "items-center"
+            )}
+          >
+            <CollapsibleTrigger className={cn(
+              "sidebar-item w-full justify-between",
+              location.pathname.startsWith('/admin') && "sidebar-item-active",
+              "group"
+            )}>
+              <div className="flex items-center">
+                <Shield 
+                  className={cn(
+                    "shrink-0",
+                    location.pathname.startsWith('/admin') ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                  size={20}
+                />
+                {!collapsed && (
+                  <span className={cn(
+                    "truncate ml-2",
+                    location.pathname.startsWith('/admin') ? "font-medium" : ""
+                  )}>
+                    Admin
+                  </span>
+                )}
+              </div>
+              {!collapsed && (
+                <ChevronDown 
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                    adminExpanded && "rotate-180"
+                  )}
+                />
+              )}
+            </CollapsibleTrigger>
+            
+            {/* Admin submenu */}
+            <CollapsibleContent className={cn(
+              "pl-8 space-y-1 mt-1",
+              collapsed && "hidden"
+            )}>
+              {adminLinks.map((item) => {
+                const isActive = location.pathname === item.href;
+                
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center text-sm py-1.5 px-3 rounded-md",
+                      isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <span className="truncate">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </nav>
       
       <div className="p-4">

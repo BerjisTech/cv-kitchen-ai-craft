@@ -54,6 +54,15 @@ const App: React.FC = () => {
                     
                     {/* Admin Routes */}
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    <Route path="/admin/analytics" element={<AdminDashboard />} />
+                    <Route path="/admin/users" element={<AdminDashboard />} />
+                    <Route path="/admin/jobs" element={<AdminDashboard />} />
+                    <Route path="/admin/billing" element={<AdminDashboard />} />
+                    <Route path="/admin/ai" element={<AdminDashboard />} />
+                    <Route path="/admin/content" element={<AdminDashboard />} />
+                    <Route path="/admin/roles" element={<AdminDashboard />} />
+                    <Route path="/admin/communications" element={<AdminDashboard />} />
+                    <Route path="/admin/system" element={<AdminDashboard />} />
                   </Route>
                   
                   {/* Public profile route with username parameter */}
