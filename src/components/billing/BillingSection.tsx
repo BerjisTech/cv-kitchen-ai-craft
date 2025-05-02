@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Check, X, Sparkles, Award, Crown, Briefcase, Building, BuildingSkyscraper, Star } from 'lucide-react';
+import { Check, X, Sparkles, Award, Crown, Briefcase, Building, Star } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -369,7 +369,7 @@ export const BillingSection = () => {
                     <div className="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
                     <CardHeader>
                       <CardTitle className="flex items-center">
-                        <BuildingSkyscraper className="mr-2 h-5 w-5" />
+                        <Building className="mr-2 h-5 w-5" />
                         Recruiter Unlimited
                       </CardTitle>
                       <CardDescription>
