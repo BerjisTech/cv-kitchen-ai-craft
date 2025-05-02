@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThemeSelector } from '@/components/theme/ThemeSelector';
 
 const Settings = () => {
   return (
@@ -86,16 +86,10 @@ const Settings = () => {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>Theme</CardTitle>
-                <CardDescription>Customize the appearance of the application</CardDescription>
+                <CardDescription>Select your preferred theme</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="darkMode" className="flex flex-col gap-1">
-                    <span>Dark Mode</span>
-                    <span className="text-xs text-muted-foreground">Use dark theme</span>
-                  </Label>
-                  <Switch id="darkMode" />
-                </div>
+                <ThemeSelector />
                 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="reducedMotion" className="flex flex-col gap-1">
