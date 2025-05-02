@@ -16,24 +16,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-background to-accent/30">
       {/* Left Sidebar */}
-      <div className="relative flex flex-col transition-all duration-300 ease-in-out"
+      <div className="relative h-full transition-all duration-300 ease-in-out"
         style={{ 
           width: leftSidebarCollapsed ? '60px' : '240px'
         }}
       >
-        {/* Left sidebar toggle button */}
-        <button
-          onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-          className="absolute right-0 top-4 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out translate-x-1/2"
-        >
-          {leftSidebarCollapsed ? (
-            <ChevronRight size={16} />
-          ) : (
-            <ChevronLeft size={16} />
-          )}
-        </button>
-        
-        <LeftSidebar collapsed={leftSidebarCollapsed} />
+        <LeftSidebar 
+          collapsed={leftSidebarCollapsed} 
+          onToggleCollapse={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)} 
+        />
       </div>
       
       {/* Main Content */}
@@ -47,24 +38,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </div>
       
       {/* Right Sidebar */}
-      <div className="relative flex flex-col transition-all duration-300 ease-in-out"
+      <div className="relative h-full transition-all duration-300 ease-in-out"
         style={{ 
           width: rightSidebarCollapsed ? '60px' : '300px'
         }}
       >
-        {/* Right sidebar toggle button */}
-        <button
-          onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-          className="absolute left-0 top-4 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out -translate-x-1/2"
-        >
-          {rightSidebarCollapsed ? (
-            <ChevronLeft size={16} />
-          ) : (
-            <ChevronRight size={16} />
-          )}
-        </button>
-        
-        <RightSidebar collapsed={rightSidebarCollapsed} />
+        <RightSidebar 
+          collapsed={rightSidebarCollapsed} 
+          onToggleCollapse={() => setRightSidebarCollapsed(!rightSidebarCollapsed)} 
+        />
       </div>
     </div>
   );

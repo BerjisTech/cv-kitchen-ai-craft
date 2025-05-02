@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User } from 'lucide-react';
+import { LayoutDashboard, Utensils, BookOpen, LineChart, Settings, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LeftSidebarProps {
   collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed }) => {
+export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
   
   const navigation = [
@@ -21,8 +22,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed }) => {
   ];
 
   return (
-    <div className="h-full glass border-r border-slate-200 flex flex-col">
-      <div className="p-4 flex items-center justify-center">
+    <div className="h-full glass border-r border-white/20 flex flex-col">
+      <div className="p-4 flex items-center justify-between">
         {!collapsed ? (
           <h2 className="font-bold text-xl text-primary">SmartCV</h2>
         ) : (
@@ -30,6 +31,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed }) => {
             S
           </div>
         )}
+        
+        {/* Toggle button integrated in the sidebar header */}
+        <button
+          onClick={onToggleCollapse}
+          className="bg-primary/10 hover:bg-primary/20 text-primary rounded-full p-1.5 transition-all duration-200"
+        >
+          {collapsed ? (
+            <ChevronRight size={16} />
+          ) : (
+            <ChevronLeft size={16} />
+          )}
+        </button>
       </div>
       
       <nav className="flex-1 px-2 py-4 space-y-1">
@@ -68,7 +81,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed }) => {
       
       <div className="p-4">
         {!collapsed && (
-          <div className="p-3 rounded-lg bg-muted/50">
+          <div className="p-3 rounded-lg bg-primary/5 backdrop-blur-sm border border-primary/10">
             <p className="text-xs text-muted-foreground">
               Free account
             </p>
