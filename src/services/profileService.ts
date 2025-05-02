@@ -29,10 +29,12 @@ export async function getProfile(): Promise<ProfileData | null> {
     
     if (error) throw error;
     
-    // Ensure the data has a role property, default to 'job_seeker' if not present
+    // Create a ProfileData object with the required role field
+    // Since role is not in the database, we'll default it to 'job_seeker'
     const profileData: ProfileData = {
       ...data,
-      role: data.role || 'job_seeker',
+      // Add the role field with a default value
+      role: 'job_seeker',
       email: user.email
     };
     
@@ -52,7 +54,7 @@ export async function updateProfile(updates: Partial<ProfileData>): Promise<bool
     if (!user) throw new Error("User not authenticated");
     
     // Remove fields that aren't in the profiles table
-    const { email, phone, location, ...profileData } = updates;
+    const { email, phone, location, role, ...profileData } = updates;
     
     const { error } = await supabase
       .from('profiles')
@@ -101,10 +103,11 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
     
     if (error) throw error;
     
-    // Ensure the data has a role field with a default value
+    // Create a ProfileData object with the required role field
     const profileData: ProfileData = {
       ...data,
-      role: data.role || 'job_seeker'
+      // Since role is not in the database, we'll default it to 'job_seeker'
+      role: 'job_seeker'
     };
     
     return profileData;
