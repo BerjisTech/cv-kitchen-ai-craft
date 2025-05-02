@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,14 +10,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { ColorPaletteSelector } from '@/components/theme/ColorPaletteSelector';
 import { BillingSection } from '@/components/billing/BillingSection';
+import { useLocation } from 'react-router-dom';
 
 const Settings = () => {
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<string>("account");
+
+  useEffect(() => {
+    // Get the tab from URL query params
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    
+    // Set the active tab if it's valid
+    if (tabParam && ['account', 'appearance', 'notifications', 'privacy', 'billing'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
+
   return (
     <MainLayout>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Settings</h1>
         
-        <Tabs defaultValue="account" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="glass mb-6">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="appearance">Appearance</TabsTrigger>

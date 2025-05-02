@@ -85,9 +85,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
             <p className="text-xs text-muted-foreground">
               Free account
             </p>
-            <p className="text-xs font-medium mt-1">
+            <Link 
+              to="/settings?tab=billing" 
+              className="text-xs font-medium mt-1 hover:text-primary transition-colors block"
+            >
               Upgrade to Pro
-            </p>
+            </Link>
           </div>
         )}
       </div>
