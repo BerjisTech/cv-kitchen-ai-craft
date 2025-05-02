@@ -41,13 +41,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetch user role from profiles table
   const fetchUserRole = async (userId: string) => {
     try {
+      console.log('Fetching user role for ID:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching user role:", error);
+        throw error;
+      }
+      
+      console.log('User role data from DB:', data);
       
       // Use type assertion since we know the structure is correct
       // This is necessary because TypeScript's type definitions haven't been updated yet
@@ -59,6 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveRole(profileData.role);
       }
       
+      console.log('Set user role to:', profileData.role);
+      
     } catch (error: any) {
       console.error("Error fetching user role:", error);
     }
@@ -68,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -91,15 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session ? 'Logged in' : 'Not logged in');
       setSession(session);
       setUser(session?.user ?? null);
       
       // Fetch user role for initial session
       if (session?.user) {
         fetchUserRole(session.user.id);
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -184,6 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchRole = async (role: UserRole) => {
     try {
       if (!user) return;
+      
+      console.log('Switching to role:', role);
+      console.log('Current userRole:', userRole);
       
       // Only allow switching between job_seeker and recruiter unless admin
       if (

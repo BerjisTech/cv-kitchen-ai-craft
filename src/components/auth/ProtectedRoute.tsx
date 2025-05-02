@@ -4,7 +4,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export const ProtectedRoute: React.FC = () => {
-  const { user, isLoading, isAdmin, activeRole } = useAuth();
+  const { user, isLoading, isAdmin, activeRole, userRole } = useAuth();
   const location = useLocation();
 
   // Check if current route is an admin route
@@ -12,6 +12,12 @@ export const ProtectedRoute: React.FC = () => {
   
   // Check if current route is a recruiter route
   const isRecruiterRoute = location.pathname.startsWith('/recruiter');
+
+  console.log("Protected Route - Current route:", location.pathname);
+  console.log("Protected Route - Is admin route:", isAdminRoute);
+  console.log("Protected Route - User role:", userRole);
+  console.log("Protected Route - Active role:", activeRole);
+  console.log("Protected Route - Is admin:", isAdmin);
 
   if (isLoading) {
     // You could add a loading spinner here
@@ -29,11 +35,13 @@ export const ProtectedRoute: React.FC = () => {
   
   // Enforce admin access for admin routes
   if (isAdminRoute && !isAdmin) {
+    console.log("Access denied: User is not an admin");
     return <Navigate to="/dashboard" replace />;
   }
   
   // Enforce recruiter or admin access for recruiter routes
   if (isRecruiterRoute && activeRole !== 'recruiter' && activeRole !== 'staff' && activeRole !== 'superadmin') {
+    console.log("Access denied: User does not have recruiter privileges");
     return <Navigate to="/dashboard" replace />;
   }
 

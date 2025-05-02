@@ -38,10 +38,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
   // Debugging - log roles to console
   React.useEffect(() => {
     if (user) {
-      console.log('User role:', userRole);
-      console.log('Active role:', activeRole);
-      console.log('Is admin:', isAdmin);
-      console.log('User metadata:', user.user_metadata);
+      console.log('LeftSidebar - User role:', userRole);
+      console.log('LeftSidebar - Active role:', activeRole);
+      console.log('LeftSidebar - Is admin:', isAdmin);
+      console.log('LeftSidebar - User metadata:', user.user_metadata);
     }
   }, [user, userRole, activeRole, isAdmin]);
   
