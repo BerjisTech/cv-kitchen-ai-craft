@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,10 +49,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      setUserRole(data.role);
+      // Use type assertion since we know the structure is correct
+      // This is necessary because TypeScript's type definitions haven't been updated yet
+      const profileData = data as unknown as { role: UserRole };
+      
+      setUserRole(profileData.role);
       // Set activeRole to the user's main role initially
       if (!activeRole) {
-        setActiveRole(data.role);
+        setActiveRole(profileData.role);
       }
       
     } catch (error: any) {
