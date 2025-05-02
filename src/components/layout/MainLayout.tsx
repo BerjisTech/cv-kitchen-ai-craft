@@ -16,28 +16,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-background to-accent/30">
       {/* Left Sidebar */}
-      <div 
-        className={`transition-all duration-300 ease-in-out ${
-          leftSidebarCollapsed ? 'w-[60px]' : 'w-[240px]'
-        }`}
-      >
-        <LeftSidebar collapsed={leftSidebarCollapsed} />
-      </div>
-      
-      {/* Left sidebar toggle button */}
-      <button
-        onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-        className="absolute left-[240px] top-1/2 -translate-y-1/2 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out"
+      <div className="relative flex flex-col transition-all duration-300 ease-in-out"
         style={{ 
-          transform: `translate(${leftSidebarCollapsed ? '-220px' : '0px'}, -50%)` 
+          width: leftSidebarCollapsed ? '60px' : '240px'
         }}
       >
-        {leftSidebarCollapsed ? (
-          <ChevronRight size={16} />
-        ) : (
-          <ChevronLeft size={16} />
-        )}
-      </button>
+        {/* Left sidebar toggle button */}
+        <button
+          onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+          className="absolute right-0 top-4 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out translate-x-1/2"
+        >
+          {leftSidebarCollapsed ? (
+            <ChevronRight size={16} />
+          ) : (
+            <ChevronLeft size={16} />
+          )}
+        </button>
+        
+        <LeftSidebar collapsed={leftSidebarCollapsed} />
+      </div>
       
       {/* Main Content */}
       <div className="flex flex-col flex-1 relative">
@@ -50,28 +47,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </div>
       
       {/* Right Sidebar */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${
-          rightSidebarCollapsed ? 'w-[60px]' : 'w-[300px]'
-        }`}
-      >
-        <RightSidebar collapsed={rightSidebarCollapsed} />
-      </div>
-      
-      {/* Right sidebar toggle button */}
-      <button
-        onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
-        className="absolute right-[60px] top-1/2 -translate-y-1/2 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out"
+      <div className="relative flex flex-col transition-all duration-300 ease-in-out"
         style={{ 
-          right: rightSidebarCollapsed ? '60px' : '300px'
+          width: rightSidebarCollapsed ? '60px' : '300px'
         }}
       >
-        {rightSidebarCollapsed ? (
-          <ChevronLeft size={16} />
-        ) : (
-          <ChevronRight size={16} />
-        )}
-      </button>
+        {/* Right sidebar toggle button */}
+        <button
+          onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+          className="absolute left-0 top-4 z-10 bg-primary text-white rounded-full p-1 shadow-md transition-all duration-300 ease-in-out -translate-x-1/2"
+        >
+          {rightSidebarCollapsed ? (
+            <ChevronLeft size={16} />
+          ) : (
+            <ChevronRight size={16} />
+          )}
+        </button>
+        
+        <RightSidebar collapsed={rightSidebarCollapsed} />
+      </div>
     </div>
   );
 };
