@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
@@ -28,12 +29,10 @@ export async function getProfile(): Promise<ProfileData | null> {
     
     if (error) throw error;
     
-    // Create a ProfileData object with the required role field
-    // Since role is not in the database, we'll default it to 'job_seeker'
+    // Create a ProfileData object with the role field
     const profileData: ProfileData = {
       ...data,
-      // Add the role field with a default value
-      role: 'job_seeker',
+      role: data.role || 'job_seeker',
       email: user.email
     };
     
@@ -55,16 +54,13 @@ export async function updateProfile(updates: Partial<ProfileData>): Promise<bool
     console.log('Updating profile with:', updates); // Debug log
     
     // Remove fields that aren't in the profiles table
-    const { email, phone, location, role, ...profileData } = updates;
+    const { email, phone, location, ...profileData } = updates;
     
-    // If we're updating role, ensure it gets saved to the database
-    const dataToUpdate = role ? { ...profileData, role } : profileData;
-    
-    console.log('Data being sent to database:', dataToUpdate); // Debug log
+    console.log('Data being sent to database:', profileData); // Debug log
     
     const { error } = await supabase
       .from('profiles')
-      .update(dataToUpdate)
+      .update(profileData)
       .eq('id', user.id);
       
     if (error) throw error;
@@ -117,11 +113,10 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
     
     if (error) throw error;
     
-    // Create a ProfileData object with the required role field
+    // Create a ProfileData object with the role field
     const profileData: ProfileData = {
       ...data,
-      // Since role is not in the database, we'll default it to 'job_seeker'
-      role: 'job_seeker'
+      role: data.role || 'job_seeker'
     };
     
     return profileData;
