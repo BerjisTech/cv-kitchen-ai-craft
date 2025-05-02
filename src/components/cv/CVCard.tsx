@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Download } from 'lucide-react';
+import { MoreHorizontal, Download, Eye, Edit } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface CVCardProps {
@@ -10,6 +10,7 @@ interface CVCardProps {
   position?: string;
   lastUpdated: string;
   thumbnailUrl?: string;
+  category?: string;
 }
 
 export const CVCard: React.FC<CVCardProps> = ({
@@ -17,12 +18,13 @@ export const CVCard: React.FC<CVCardProps> = ({
   company,
   position,
   lastUpdated,
-  thumbnailUrl
+  thumbnailUrl,
+  category
 }) => {
   return (
-    <div className="glass-card overflow-hidden flex flex-col h-full">
+    <div className="glass-card overflow-hidden flex flex-col h-full border border-white/10">
       {/* CV Thumbnail */}
-      <div className="aspect-[3/4] relative overflow-hidden bg-muted/30">
+      <div className="aspect-[3/4] relative overflow-hidden bg-muted/20">
         {thumbnailUrl ? (
           <img 
             src={thumbnailUrl} 
@@ -41,36 +43,26 @@ export const CVCard: React.FC<CVCardProps> = ({
       
       {/* CV Info */}
       <div className="p-4 flex-1">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-medium">{title}</h3>
-            {company && <p className="text-sm text-muted-foreground">{company}</p>}
-            <p className="text-xs text-muted-foreground mt-1">Last updated: {lastUpdated}</p>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem>Share</DropdownMenuItem>
-              <DropdownMenuItem>Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div>
+          <h3 className="font-medium">{title}</h3>
+          {company && <p className="text-sm text-muted-foreground">{company}</p>}
+          {category && <p className="text-sm text-muted-foreground">{category}</p>}
         </div>
       </div>
       
       {/* Actions */}
-      <div className="p-4 pt-2 border-t border-slate-100">
-        <div className="flex gap-2">
-          <Button size="sm" className="w-full gap-1.5">
-            <Download size={14} />
-            Download
-          </Button>
+      <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
+        <p className="text-xs text-muted-foreground">{lastUpdated}</p>
+        <div className="flex items-center gap-2">
+          <button className="text-gray-500 hover:text-gray-700">
+            <Eye size={16} />
+          </button>
+          <button className="text-gray-500 hover:text-gray-700">
+            <Edit size={16} />
+          </button>
+          <button className="text-gray-500 hover:text-gray-700">
+            <Download size={16} />
+          </button>
         </div>
       </div>
     </div>
