@@ -11,10 +11,65 @@ import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { ColorPaletteSelector } from '@/components/theme/ColorPaletteSelector';
 import { BillingSection } from '@/components/billing/BillingSection';
 import { useLocation } from 'react-router-dom';
+import { getProfile, ProfileData, updateProfile, updatePassword } from '@/services/profileService';
+import { toast } from '@/components/ui/sonner';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const accountFormSchema = z.object({
+  full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  username: z.string().min(2, { message: "Username must be at least 2 characters." }).optional().or(z.literal('')),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  phone: z.string().optional().or(z.literal('')),
+  location: z.string().optional().or(z.literal('')),
+  bio: z.string().optional().or(z.literal(''))
+});
+
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  newPassword: z.string().min(6, { message: "New password must be at least 6 characters." }),
+  confirmPassword: z.string().min(6, { message: "Please confirm your password." })
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type AccountFormValues = z.infer<typeof accountFormSchema>;
+type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 const Settings = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<string>("account");
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const accountForm = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      full_name: "",
+      username: "",
+      email: "",
+      phone: "",
+      location: "",
+      bio: ""
+    },
+  });
+
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
+  });
 
   useEffect(() => {
     // Get the tab from URL query params
@@ -26,6 +81,55 @@ const Settings = () => {
       setActiveTab(tabParam);
     }
   }, [location.search]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const data = await getProfile();
+      setProfile(data);
+      if (data) {
+        accountForm.reset({
+          full_name: data.full_name || "",
+          username: data.username || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          location: data.location || "",
+          bio: data.bio || ""
+        });
+      }
+      setLoading(false);
+    };
+    
+    fetchProfile();
+  }, []);
+
+  const onSubmitAccount = async (data: AccountFormValues) => {
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        full_name: data.full_name,
+        username: data.username || null,
+        bio: data.bio || null,
+        phone: data.phone,
+        location: data.location
+      });
+      // Update the local profile state
+      setProfile(prev => prev ? { ...prev, ...data } : null);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const onSubmitPassword = async (data: PasswordFormValues) => {
+    setIsChangingPassword(true);
+    try {
+      const success = await updatePassword(data.currentPassword, data.newPassword);
+      if (success) {
+        passwordForm.reset();
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -47,29 +151,120 @@ const Settings = () => {
                 <CardTitle>Account Information</CardTitle>
                 <CardDescription>Update your account details</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input id="fullName" defaultValue="John Doe" />
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="space-y-2">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2 mt-4">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-24 w-full" />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" defaultValue="john.doe@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" defaultValue="+1 (555) 123-4567" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input id="location" defaultValue="San Francisco, CA" />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button>Save Changes</Button>
-                </div>
+                ) : (
+                  <Form {...accountForm}>
+                    <form onSubmit={accountForm.handleSubmit(onSubmitAccount)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={accountForm.control}
+                          name="full_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={accountForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={accountForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} disabled />
+                              </FormControl>
+                              <FormDescription>Email cannot be changed</FormDescription>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={accountForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="tel" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={accountForm.control}
+                          name="location"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Location</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <FormField
+                        control={accountForm.control}
+                        name="bio"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bio</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Write a short bio about yourself"
+                                className="min-h-[100px]"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={isSaving}>
+                          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Save Changes
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
               </CardContent>
             </Card>
             
@@ -78,25 +273,57 @@ const Settings = () => {
                 <CardTitle>Password</CardTitle>
                 <CardDescription>Update your password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button>Update Password</Button>
-                </div>
+              <CardContent>
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="password" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="password" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="password" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isChangingPassword}>
+                        {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Update Password
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>

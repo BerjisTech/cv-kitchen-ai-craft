@@ -1,12 +1,77 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone, MapPin, Calendar, Edit, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getProfile, ProfileData } from '@/services/profileService';
+import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Profile = () => {
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const data = await getProfile();
+      setProfile(data);
+      setLoading(false);
+    };
+    
+    fetchProfile();
+  }, []);
+
+  // Format date for member since display
+  const formatMemberSince = () => {
+    if (!user?.created_at) return "New member";
+    return `Member since ${format(new Date(user.created_at), 'MMM yyyy')}`;
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold">My Profile</h1>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="glass-card lg:col-span-1">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Skeleton className="w-24 h-24 rounded-full" />
+                </div>
+                <Skeleton className="h-6 w-32 mx-auto mb-2" />
+                <Skeleton className="h-4 w-24 mx-auto" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </CardContent>
+            </Card>
+            <Card className="glass-card lg:col-span-2">
+              <CardHeader>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full mb-4" />
+                <Skeleton className="h-4 w-24 mb-2" />
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-6 w-16 rounded-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -20,31 +85,33 @@ const Profile = () => {
                   <User size={40} className="text-primary/60" />
                 </div>
               </div>
-              <CardTitle>John Doe</CardTitle>
-              <CardDescription>Software Engineer</CardDescription>
+              <CardTitle>{profile?.full_name || 'User'}</CardTitle>
+              <CardDescription>{profile?.username || 'No username set'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3 text-sm">
                 <Mail size={16} className="text-muted-foreground" />
-                <span>john.doe@example.com</span>
+                <span>{profile?.email || 'No email available'}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone size={16} className="text-muted-foreground" />
-                <span>+1 (555) 123-4567</span>
+                <span>{profile?.phone || 'No phone number'}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <MapPin size={16} className="text-muted-foreground" />
-                <span>San Francisco, CA</span>
+                <span>{profile?.location || 'No location set'}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Calendar size={16} className="text-muted-foreground" />
-                <span>Member since Jan 2023</span>
+                <span>{formatMemberSince()}</span>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
-              <Button variant="outline" className="w-full gap-2">
-                <Edit size={16} />
-                Edit Profile
+              <Button variant="outline" className="w-full gap-2" asChild>
+                <Link to="/settings?tab=account">
+                  <Edit size={16} />
+                  Edit Profile
+                </Link>
               </Button>
               <Button className="w-full gap-2" asChild>
                 <Link to="/public-profile">
@@ -62,8 +129,7 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm">
-                Experienced software engineer with a passion for building intuitive user interfaces and scalable applications. 
-                Specializing in frontend development with React and TypeScript, with 5+ years of experience in the tech industry.
+                {profile?.bio || 'No bio available. Add your professional summary in the settings page.'}
               </p>
               
               <div>
@@ -78,9 +144,11 @@ const Profile = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full gap-2">
-                <Edit size={16} />
-                Edit Details
+              <Button variant="outline" className="w-full gap-2" asChild>
+                <Link to="/settings?tab=account">
+                  <Edit size={16} />
+                  Edit Details
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -116,9 +184,11 @@ const Profile = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full gap-2">
-                <Edit size={16} />
-                Edit Experience
+              <Button variant="outline" className="w-full gap-2" asChild>
+                <Link to="/settings?tab=account">
+                  <Edit size={16} />
+                  Edit Experience
+                </Link>
               </Button>
             </CardFooter>
           </Card>
