@@ -56,7 +56,12 @@ const App: React.FC = () => {
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   </Route>
                   
+                  {/* Public profile route with username parameter */}
+                  <Route path="/u/:username" element={<PublicProfile />} />
+                  
+                  {/* Legacy route, will redirect to username-based URL */}
                   <Route path="/public-profile" element={<PublicProfile />} />
+                  
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

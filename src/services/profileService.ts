@@ -29,9 +29,12 @@ export async function getProfile(): Promise<ProfileData | null> {
     
     if (error) throw error;
     
+    // Cast data to ensure TypeScript recognizes the role field
+    const profileData = data as ProfileData;
+    
     // Combine profile data with user email
     return {
-      ...(data as ProfileData),
+      ...profileData,
       email: user.email
     };
     
@@ -84,5 +87,25 @@ export async function updatePassword(
     console.error("Error updating password:", error);
     toast.error(error.message || "Failed to update password");
     return false;
+  }
+}
+
+// New function to get profile by username
+export async function getProfileByUsername(username: string): Promise<ProfileData | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', username)
+      .single();
+    
+    if (error) throw error;
+    
+    // Cast data to ensure TypeScript recognizes the role field
+    return data as ProfileData;
+    
+  } catch (error: any) {
+    console.error("Error fetching profile by username:", error);
+    return null;
   }
 }

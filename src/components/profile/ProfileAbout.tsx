@@ -1,8 +1,15 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProfileData } from '@/services/profileService';
 
-export const ProfileAbout: React.FC = () => {
+interface ProfileAboutProps {
+  profile: ProfileData | null;
+}
+
+export const ProfileAbout: React.FC<ProfileAboutProps> = ({ profile }) => {
+  if (!profile) return null;
+  
   return (
     <div className="space-y-6">
       <Card className="glass-card">
@@ -11,22 +18,28 @@ export const ProfileAbout: React.FC = () => {
           <CardDescription>Professional summary</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm">
-            I am a passionate and experienced frontend developer with over 5 years in the tech industry. 
-            My journey began with a degree in Computer Science, which laid the foundation for my 
-            technical knowledge and problem-solving abilities.
-          </p>
-          <p className="text-sm mt-4">
-            Over the years, I've had the privilege of working with various organizations, from startups to 
-            large enterprises, where I've honed my skills in creating responsive and user-friendly web 
-            applications. I particularly enjoy the process of turning complex problems into simple, 
-            intuitive interfaces.
-          </p>
-          <p className="text-sm mt-4">
-            In my free time, I contribute to open-source projects and mentor aspiring developers. 
-            I believe in continuous learning and regularly attend tech conferences and workshops 
-            to stay updated with the latest industry trends.
-          </p>
+          {profile.bio ? (
+            <p className="text-sm whitespace-pre-wrap">{profile.bio}</p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground italic">
+                No bio available. This user hasn't added a bio yet.
+              </p>
+              {profile.website && (
+                <p className="text-sm mt-4">
+                  <span className="font-medium">Website: </span>
+                  <a 
+                    href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {profile.website}
+                  </a>
+                </p>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

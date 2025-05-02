@@ -9,6 +9,7 @@ import { getProfile, ProfileData } from '@/services/profileService';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Profile = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -29,6 +30,16 @@ const Profile = () => {
   const formatMemberSince = () => {
     if (!user?.created_at) return "New member";
     return `Member since ${format(new Date(user.created_at), 'MMM yyyy')}`;
+  };
+
+  // Get initials for avatar fallback
+  const getInitials = () => {
+    if (!profile?.full_name) return "U";
+    
+    const nameParts = profile.full_name.split(" ");
+    return nameParts.length > 1
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+      : nameParts[0].substring(0, 2);
   };
 
   if (loading) {
@@ -81,9 +92,12 @@ const Profile = () => {
           <Card className="glass-card lg:col-span-1">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-primary/20 border border-white/30 flex items-center justify-center">
-                  <User size={40} className="text-primary/60" />
-                </div>
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || 'User'} />
+                  <AvatarFallback className="text-2xl bg-primary/20 text-primary">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
               </div>
               <CardTitle>{profile?.full_name || 'User'}</CardTitle>
               <CardDescription>{profile?.username || 'No username set'}</CardDescription>
@@ -113,12 +127,14 @@ const Profile = () => {
                   Edit Profile
                 </Link>
               </Button>
-              <Button className="w-full gap-2" asChild>
-                <Link to="/public-profile">
-                  <ExternalLink size={16} />
-                  View Public Profile
-                </Link>
-              </Button>
+              {profile?.username && (
+                <Button className="w-full gap-2" asChild>
+                  <Link to={`/u/${profile.username}`}>
+                    <ExternalLink size={16} />
+                    View Public Profile
+                  </Link>
+                </Button>
+              )}
             </CardFooter>
           </Card>
           
@@ -128,7 +144,7 @@ const Profile = () => {
               <CardDescription>Professional summary and skills</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm">
+              <p className="text-sm whitespace-pre-wrap">
                 {profile?.bio || 'No bio available. Add your professional summary in the settings page.'}
               </p>
               

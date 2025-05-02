@@ -47,7 +47,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_unique_username: {
+        Args: { full_name: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
