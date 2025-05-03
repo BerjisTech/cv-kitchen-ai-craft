@@ -38,6 +38,7 @@ export async function extractCVData(documentId: string): Promise<Partial<CVData>
       return null;
     }
     
+    console.log("Successfully extracted CV data:", data);
     toast.success("Successfully extracted data from your CV");
     return data as Partial<CVData>;
   } catch (error) {
@@ -60,6 +61,8 @@ export async function updateProfileWithCVData(cvData: Partial<CVData>): Promise<
       toast.error("You must be logged in to update your profile");
       return false;
     }
+    
+    console.log("Updating profile with CV data:", cvData);
     
     // Convert CV data to profile format
     const profileUpdates: Partial<ProfileData> = {
@@ -103,87 +106,160 @@ export async function updateProfileWithCVData(cvData: Partial<CVData>): Promise<
  */
 async function saveExtractedCVDetailsData(userId: string, cvData: Partial<CVData>): Promise<void> {
   try {
+    console.log("Saving extracted CV details to database:", cvData);
+    
     // Save skills
     if (cvData.skills && cvData.skills.length > 0) {
-      for (const skill of cvData.skills) {
-        // Check if skill already exists for this user
-        const { data: existingSkill } = await supabase
-          .from('user_skills')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('name', skill)
-          .maybeSingle();
+      console.log("Saving skills:", cvData.skills);
+      
+      // Delete existing skills from CV extraction to avoid duplicates
+      await supabase
+        .from('user_skills')
+        .delete()
+        .eq('user_id', userId)
+        .eq('source', 'cv_extract');
+      
+      // Batch insert all skills
+      const skillsToInsert = cvData.skills.map(skill => ({
+        user_id: userId,
+        name: skill,
+        source: 'cv_extract'
+      }));
+      
+      const { error: skillsError } = await supabase
+        .from('user_skills')
+        .insert(skillsToInsert);
         
-        if (!existingSkill) {
-          await supabase
-            .from('user_skills')
-            .insert({
-              user_id: userId,
-              name: skill,
-              source: 'cv_extract'
-            });
-        }
+      if (skillsError) {
+        console.error("Error saving skills:", skillsError);
+      } else {
+        console.log(`Saved ${cvData.skills.length} skills to database`);
       }
-      console.log(`Saved ${cvData.skills.length} skills to database`);
     }
     
     // Save experience entries
     if (cvData.experience && cvData.experience.length > 0) {
-      for (const exp of cvData.experience) {
-        // Check if a similar experience entry already exists
-        const { data: existingExp } = await supabase
-          .from('user_experience')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('company', exp.company)
-          .eq('role', exp.role)
-          .maybeSingle();
-          
-        if (!existingExp) {
-          await supabase
-            .from('user_experience')
-            .insert({
-              user_id: userId,
-              company: exp.company,
-              role: exp.role,
-              start_date: exp.start,
-              end_date: exp.end === 'Present' ? null : exp.end,
-              description: exp.description,
-              source: 'cv_extract'
-            });
-        }
+      console.log("Saving experience:", cvData.experience);
+      
+      // Delete existing experience from CV extraction to avoid duplicates
+      await supabase
+        .from('user_experience')
+        .delete()
+        .eq('user_id', userId)
+        .eq('source', 'cv_extract');
+      
+      // Batch insert all experience entries
+      const experienceToInsert = cvData.experience.map(exp => ({
+        user_id: userId,
+        company: exp.company,
+        role: exp.role,
+        start_date: exp.start,
+        end_date: exp.end === 'Present' ? null : exp.end,
+        description: exp.description || '',
+        source: 'cv_extract'
+      }));
+      
+      const { error: expError } = await supabase
+        .from('user_experience')
+        .insert(experienceToInsert);
+        
+      if (expError) {
+        console.error("Error saving experience:", expError);
+      } else {
+        console.log(`Saved ${cvData.experience.length} experience entries to database`);
       }
-      console.log(`Saved ${cvData.experience.length} experience entries to database`);
     }
     
     // Save education entries
     if (cvData.education && cvData.education.length > 0) {
-      for (const edu of cvData.education) {
-        // Check if a similar education entry already exists
-        const { data: existingEdu } = await supabase
-          .from('user_education')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('institution', edu.school)
-          .eq('degree', edu.degree)
-          .maybeSingle();
-          
-        if (!existingEdu) {
-          await supabase
-            .from('user_education')
-            .insert({
-              user_id: userId,
-              institution: edu.school,
-              degree: edu.degree,
-              start_year: edu.start,
-              end_year: edu.end === 'Present' ? null : edu.end,
-              description: edu.description || '',
-              source: 'cv_extract'
-            });
-        }
+      console.log("Saving education:", cvData.education);
+      
+      // Delete existing education from CV extraction to avoid duplicates
+      await supabase
+        .from('user_education')
+        .delete()
+        .eq('user_id', userId)
+        .eq('source', 'cv_extract');
+      
+      // Batch insert all education entries
+      const educationToInsert = cvData.education.map(edu => ({
+        user_id: userId,
+        institution: edu.school,
+        degree: edu.degree,
+        start_year: edu.start,
+        end_year: edu.end === 'Present' ? null : edu.end,
+        description: edu.description || '',
+        source: 'cv_extract'
+      }));
+      
+      const { error: eduError } = await supabase
+        .from('user_education')
+        .insert(educationToInsert);
+        
+      if (eduError) {
+        console.error("Error saving education:", eduError);
+      } else {
+        console.log(`Saved ${cvData.education.length} education entries to database`);
       }
-      console.log(`Saved ${cvData.education.length} education entries to database`);
     }
+    
+    // Save languages
+    if (cvData.languages && cvData.languages.length > 0) {
+      console.log("Saving languages:", cvData.languages);
+      
+      // Delete existing languages from CV extraction to avoid duplicates
+      await supabase
+        .from('user_languages')
+        .delete()
+        .eq('user_id', userId);
+      
+      // Batch insert all languages
+      const languagesToInsert = cvData.languages.map(lang => ({
+        user_id: userId,
+        language: lang.language,
+        level: lang.proficiency || 'Conversational'
+      }));
+      
+      const { error: langError } = await supabase
+        .from('user_languages')
+        .insert(languagesToInsert);
+        
+      if (langError) {
+        console.error("Error saving languages:", langError);
+      } else {
+        console.log(`Saved ${cvData.languages.length} languages to database`);
+      }
+    }
+    
+    // Save certifications
+    if (cvData.certifications && cvData.certifications.length > 0) {
+      console.log("Saving certifications:", cvData.certifications);
+      
+      // Delete existing certifications from CV extraction to avoid duplicates
+      await supabase
+        .from('user_certifications')
+        .delete()
+        .eq('user_id', userId);
+      
+      // Batch insert all certifications
+      const certificationsToInsert = cvData.certifications.map(cert => ({
+        user_id: userId,
+        name: cert.name,
+        issuer: cert.issuer || '',
+        date: cert.date || ''
+      }));
+      
+      const { error: certError } = await supabase
+        .from('user_certifications')
+        .insert(certificationsToInsert);
+        
+      if (certError) {
+        console.error("Error saving certifications:", certError);
+      } else {
+        console.log(`Saved ${cvData.certifications.length} certifications to database`);
+      }
+    }
+    
   } catch (error) {
     console.error("Error saving detailed CV data:", error);
     // Don't throw, just log the error

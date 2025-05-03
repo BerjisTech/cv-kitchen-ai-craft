@@ -90,8 +90,13 @@ serve(async (req) => {
     const { signedURL } = await storageResponse.json();
     console.log("Got signed URL for document:", signedURL);
     
+    // Make sure URL is absolute
+    const fullSignedUrl = signedURL.startsWith('http') 
+      ? signedURL 
+      : new URL(signedURL, supabaseUrl).toString();
+    
     // Download the document content
-    const fileResponse = await fetch(signedURL);
+    const fileResponse = await fetch(fullSignedUrl);
     if (!fileResponse.ok) {
       return new Response(
         JSON.stringify({ error: 'Failed to download document content' }),

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, GraduationCap } from 'lucide-react';
@@ -54,10 +55,10 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         }
           
         if (experienceData && experienceData.length > 0) {
-          // Use type assertion with unknown as an intermediate step
-          const typedExperience = experienceData as any[] as UserExperience[];
-          setWorkExperience(typedExperience);
+          console.log("Fetched experience data:", experienceData);
+          setWorkExperience(experienceData as UserExperience[]);
         } else {
+          console.log("No experience data found, using default");
           // Default sample experience if none is found
           setWorkExperience([
             {
@@ -85,10 +86,10 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         }
           
         if (educationData && educationData.length > 0) {
-          // Use type assertion with unknown as an intermediate step
-          const typedEducation = educationData as any[] as UserEducation[];
-          setEducation(typedEducation);
+          console.log("Fetched education data:", educationData);
+          setEducation(educationData as UserEducation[]);
         } else {
+          console.log("No education data found, using default");
           // Default sample education if none is found
           setEducation([
             {

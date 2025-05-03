@@ -54,10 +54,12 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           console.error("Error fetching skills:", skillsError);
         }
           
-        if (skillsData) {
-          // Use type assertion with any as an intermediate step
-          const typedSkills = skillsData as any[] as UserSkill[];
-          setSkills(typedSkills);
+        if (skillsData && skillsData.length > 0) {
+          console.log("Fetched skills:", skillsData);
+          setSkills(skillsData as UserSkill[]);
+        } else {
+          console.log("No skills found");
+          setSkills([]);
         }
         
         // Fetch languages
@@ -71,10 +73,11 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (languagesData && languagesData.length > 0) {
+          console.log("Fetched languages:", languagesData);
           // Use type assertion with any as an intermediate step
-          const typedLanguages = languagesData as any[] as UserLanguage[];
-          setLanguages(typedLanguages);
+          setLanguages(languagesData as UserLanguage[]);
         } else {
+          console.log("No languages found, using defaults");
           // Default sample languages if none are found
           setLanguages([
             { id: '1', user_id: profile.id as string, language: 'English', level: 'Native' },
@@ -93,10 +96,11 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (certificationsData && certificationsData.length > 0) {
+          console.log("Fetched certifications:", certificationsData);
           // Use type assertion with any as an intermediate step
-          const typedCertifications = certificationsData as any[] as UserCertification[];
-          setCertifications(typedCertifications);
+          setCertifications(certificationsData as UserCertification[]);
         } else {
+          console.log("No certifications found, using defaults");
           // Default sample certifications if none are found
           setCertifications([
             { 

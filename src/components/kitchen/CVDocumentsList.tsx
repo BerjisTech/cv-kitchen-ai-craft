@@ -74,10 +74,14 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
       let successCount = 0;
       for (const doc of documents) {
         try {
+          setProcessingDocs(prev => ({ ...prev, [doc.id]: true }));
+          toast.info(`Processing ${doc.filename}...`);
           await onExtractData(doc.id);
           successCount++;
+          setProcessingDocs(prev => ({ ...prev, [doc.id]: false }));
         } catch (error) {
           console.error(`Error processing CV ${doc.filename}:`, error);
+          setProcessingDocs(prev => ({ ...prev, [doc.id]: false }));
         }
       }
       
@@ -93,6 +97,12 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
       toast.error('Failed to extract data from CVs');
     } finally {
       setProcessingAllDocs(false);
+      
+      // Reload the page to ensure all components reflect the updated data
+      toast.info('Reloading page to show updated data...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     }
   };
   
@@ -203,7 +213,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
         <div className="mt-3 text-sm text-muted-foreground">
           <p>Click the <RefreshCw className="inline h-3 w-3" /> button to extract data from your CV and update your profile info, skills, and experience.</p>
           {documents.length > 1 && (
-            <p className="mt-1">Or use the "Extract All CVs" button to process all CVs at once.</p>
+            <p className="mt-1">Or use the "Extract All CVs" button to process all CVs at once and update your profile.</p>
           )}
         </div>
       )}
