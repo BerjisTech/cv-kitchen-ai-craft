@@ -202,11 +202,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         })
         .eq('id', user.id);
       
-      const profileUpdatePromise = new Promise((resolve) => {
-        profileUpdateOperation.then(response => resolve(response));
-      });
-      
-      updates.push(profileUpdatePromise);
+      updates.push(Promise.resolve(profileUpdateOperation));
     }
 
     // 2. Process and store skills
@@ -239,11 +235,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           .from('user_skills')
           .insert(skillsData);
         
-        const skillsUpdatePromise = new Promise((resolve) => {
-          skillsUpdateOperation.then(response => resolve(response));
-        });
-        
-        updates.push(skillsUpdatePromise);
+        updates.push(Promise.resolve(skillsUpdateOperation));
       }
     }
 
@@ -286,11 +278,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_experience')
             .insert([experienceEntry]);
           
-          const experienceUpdatePromise = new Promise((resolve) => {
-            experienceUpdateOperation.then(response => resolve(response));
-          });
-          
-          updates.push(experienceUpdatePromise);
+          updates.push(Promise.resolve(experienceUpdateOperation));
         }
       }
     }
@@ -333,11 +321,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_education')
             .insert([educationEntry]);
           
-          const educationUpdatePromise = new Promise((resolve) => {
-            educationUpdateOperation.then(response => resolve(response));
-          });
-          
-          updates.push(educationUpdatePromise);
+          updates.push(Promise.resolve(educationUpdateOperation));
         }
       }
     }
@@ -370,11 +354,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           .from('user_languages')
           .insert(languagesData);
         
-        const languagesUpdatePromise = new Promise((resolve) => {
-          languagesUpdateOperation.then(response => resolve(response));
-        });
-        
-        updates.push(languagesUpdatePromise);
+        updates.push(Promise.resolve(languagesUpdateOperation));
       }
     }
 
@@ -413,11 +393,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_certifications')
             .insert([certEntry]);
           
-          const certUpdatePromise = new Promise((resolve) => {
-            certUpdateOperation.then(response => resolve(response));
-          });
-          
-          updates.push(certUpdatePromise);
+          updates.push(Promise.resolve(certUpdateOperation));
         }
       }
     }
