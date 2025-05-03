@@ -4,7 +4,8 @@ import { JobAnalysis } from '@/services/jobAnalysisService';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, FileText, Download } from 'lucide-react';
-import { generateTailoredCV, getTailoredCV, TailoredCV } from '@/services/tailoredCVService';
+import { checkForExistingCV, generateTailoredCV, getTailoredCV } from '@/services/tailoredCVService';
+import { TailoredCV } from '@/types/tailoredCV'; // Fixed import from types file
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 
