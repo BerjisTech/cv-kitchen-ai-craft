@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
@@ -86,5 +85,32 @@ export async function getAnalysisById(id: string): Promise<JobAnalysis | null> {
   } catch (error: any) {
     console.error("Error fetching analysis:", error);
     return null;
+  }
+}
+
+export async function deleteAnalysis(id: string): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return false;
+    
+    const { error } = await supabase
+      .from('job_analyses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+    
+    if (error) {
+      console.error("Error deleting analysis:", error);
+      toast.error("Failed to delete analysis");
+      return false;
+    }
+    
+    toast.success("Analysis deleted successfully");
+    return true;
+  } catch (error: any) {
+    console.error("Error deleting analysis:", error);
+    toast.error("Failed to delete analysis");
+    return false;
   }
 }

@@ -11,6 +11,9 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Kitchen from "./pages/Kitchen";
+import Experience from "./pages/kitchen/Experience";
+import Education from "./pages/kitchen/Education";
+import Skills from "./pages/kitchen/Skills";
 import Shelf from "./pages/Shelf";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
@@ -44,6 +47,9 @@ const App: React.FC = () => {
                   <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/kitchen" element={<Kitchen />} />
+                    <Route path="/kitchen/experience" element={<Experience />} />
+                    <Route path="/kitchen/education" element={<Education />} />
+                    <Route path="/kitchen/skills" element={<Skills />} />
                     <Route path="/shelf" element={<Shelf />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/profile" element={<Profile />} />

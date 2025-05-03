@@ -2,26 +2,35 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface CareerIngredientCardProps {
   title: string;
   count: number;
   description: string;
   accentColor?: 'blue' | 'green' | 'amber';
+  routePath?: string;
 }
 
 export const CareerIngredientCard: React.FC<CareerIngredientCardProps> = ({ 
   title, 
   count, 
   description,
-  accentColor = 'blue'
+  accentColor = 'blue',
+  routePath = '/kitchen'
 }) => {
+  const navigate = useNavigate();
+
   const getBadgeColor = () => {
     switch(accentColor) {
       case 'green': return 'bg-green-100 text-green-600';
       case 'amber': return 'bg-amber-100 text-amber-600';
       default: return 'bg-blue-100 text-blue-600';
     }
+  };
+  
+  const handleManage = () => {
+    navigate(routePath);
   };
   
   return (
@@ -35,7 +44,7 @@ export const CareerIngredientCard: React.FC<CareerIngredientCardProps> = ({
       
       <p className="text-sm text-muted-foreground">{description}</p>
       
-      <Button variant="outline" className="w-full">
+      <Button variant="outline" className="w-full" onClick={handleManage}>
         Manage
       </Button>
     </Card>

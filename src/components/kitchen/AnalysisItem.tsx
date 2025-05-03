@@ -13,6 +13,13 @@ export const AnalysisItem: React.FC<AnalysisItemProps> = ({ title, timeAgo, onCl
     <div 
       className="flex justify-between items-center p-4 hover:bg-muted/20 cursor-pointer transition-colors"
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}
     >
       <div>
         <h4 className="font-medium">{title}</h4>

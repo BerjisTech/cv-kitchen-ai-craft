@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Upload, FileUp, Linkedin, Github, ArrowRight, FileText, Trash2 } from 'lucide-react';
@@ -13,9 +12,10 @@ import { CareerIngredientCard } from '@/components/kitchen/CareerIngredientCard'
 import { useTheme } from '@/context/ThemeProvider';
 import { connectWithGitHub, connectWithLinkedIn, getUserConnections } from '@/services/socialConnectionService';
 import { getUserDocuments, UserDocument, deleteDocument, getDownloadUrl } from '@/services/documentService';
-import { analyzeJobDescription, getRecentAnalyses, getAnalysisById, JobAnalysis } from '@/services/jobAnalysisService';
+import { analyzeJobDescription, getRecentAnalyses, getAnalysisById, deleteAnalysis, JobAnalysis } from '@/services/jobAnalysisService';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
 
 const Kitchen = () => {
   const [jobDescription, setJobDescription] = useState('');
@@ -27,6 +27,7 @@ const Kitchen = () => {
   const [selectedAnalysis, setSelectedAnalysis] = useState<JobAnalysis | null>(null);
   const { colorPalette } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const fetchUserData = async () => {
@@ -97,10 +98,28 @@ const Kitchen = () => {
   const handleViewAnalysis = async (id: string) => {
     try {
       const analysis = await getAnalysisById(id);
-      setSelectedAnalysis(analysis);
+      if (analysis) {
+        setSelectedAnalysis(analysis);
+        // Scroll to the analysis detail section
+        setTimeout(() => {
+          document.getElementById('analysis-detail')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     } catch (error) {
       console.error("Error fetching analysis:", error);
       toast.error("Failed to load analysis");
+    }
+  };
+
+  const handleDeleteAnalysis = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this analysis?")) {
+      const success = await deleteAnalysis(id);
+      if (success) {
+        setRecentAnalyses(recentAnalyses.filter(a => a.id !== id));
+        if (selectedAnalysis?.id === id) {
+          setSelectedAnalysis(null);
+        }
+      }
     }
   };
   
@@ -130,6 +149,11 @@ const Kitchen = () => {
   
   const hasLinkedInConnection = socialConnections.some(conn => conn.provider === 'linkedin');
   const hasGitHubConnection = socialConnections.some(conn => conn.provider === 'github');
+  
+  // Navigation functions for career ingredient cards
+  const navigateToExperience = () => navigate('/kitchen/experience');
+  const navigateToEducation = () => navigate('/kitchen/education');
+  const navigateToSkills = () => navigate('/kitchen/skills');
   
   return (
     <MainLayout>
@@ -272,10 +296,12 @@ const Kitchen = () => {
         
         {/* Selected Analysis Detail */}
         {selectedAnalysis && (
-          <AnalysisDetail 
-            analysis={selectedAnalysis} 
-            onClose={() => setSelectedAnalysis(null)}
-          />
+          <div id="analysis-detail">
+            <AnalysisDetail 
+              analysis={selectedAnalysis} 
+              onClose={() => setSelectedAnalysis(null)}
+            />
+          </div>
         )}
         
         {/* Job Description Analysis */}
@@ -345,12 +371,14 @@ const Kitchen = () => {
               title="Experience"
               count={3}
               description="Your work history and professional roles"
+              routePath="/kitchen/experience"
             />
             
             <CareerIngredientCard 
               title="Education"
               count={2}
               description="Your degrees, certifications and courses"
+              routePath="/kitchen/education"
             />
             
             <CareerIngredientCard 
@@ -358,6 +386,7 @@ const Kitchen = () => {
               count={12}
               description="Technical and soft skills accumulated"
               accentColor="amber"
+              routePath="/kitchen/skills"
             />
           </div>
         </div>
