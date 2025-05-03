@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { CVRenderer } from '@/components/cv/CVRenderer';
 import { exportToPDF } from '@/utils/exportToPDF';
 import { toast } from '@/components/ui/sonner';
 import { CVData } from '@/types/CVData';
+import { getProfile } from '@/services/profileService';
 
 export const CVViewer: React.FC = () => {
   const { cvId } = useParams<{ cvId: string }>();
@@ -20,6 +20,23 @@ export const CVViewer: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('modern');
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  
+  useEffect(() => {
+    // First load the user profile to ensure we have the correct user data
+    const loadUserProfile = async () => {
+      try {
+        const profile = await getProfile();
+        if (profile) {
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+    
+    loadUserProfile();
+  }, []);
   
   useEffect(() => {
     const loadCV = async () => {
@@ -34,15 +51,36 @@ export const CVViewer: React.FC = () => {
           
           // Transform CV data to CVData format
           const formattedData: CVData = {
-            fullName: cvData.cv_content?.name || cvData.cv_content?.header?.name || 'Your Name',
-            title: cvData.cv_content?.title || cvData.cv_content?.header?.title || 'Professional Title',
+            fullName: userProfile?.full_name || 
+                     cvData.cv_content?.name || 
+                     cvData.cv_content?.header?.name || 
+                     'Your Name',
+            title: cvData.cv_content?.title || 
+                  cvData.cv_content?.header?.title || 
+                  'Professional Title',
             contact: {
-              email: cvData.cv_content?.email || cvData.cv_content?.contact?.email || '',
-              phone: cvData.cv_content?.phone || cvData.cv_content?.contact?.phone || '',
-              location: cvData.cv_content?.location || cvData.cv_content?.contact?.location || '',
-              website: cvData.cv_content?.website || cvData.cv_content?.contact?.website || '',
-              linkedin: cvData.cv_content?.linkedin || cvData.cv_content?.contact?.linkedin || '',
-              github: cvData.cv_content?.github || cvData.cv_content?.contact?.github || '',
+              email: userProfile?.email || 
+                     cvData.cv_content?.email || 
+                     cvData.cv_content?.contact?.email || 
+                     '',
+              phone: userProfile?.phone || 
+                     cvData.cv_content?.phone || 
+                     cvData.cv_content?.contact?.phone || 
+                     '',
+              location: userProfile?.location || 
+                        cvData.cv_content?.location || 
+                        cvData.cv_content?.contact?.location || 
+                        '',
+              website: userProfile?.website || 
+                       cvData.cv_content?.website || 
+                       cvData.cv_content?.contact?.website || 
+                       '',
+              linkedin: cvData.cv_content?.linkedin || 
+                        cvData.cv_content?.contact?.linkedin || 
+                        '',
+              github: cvData.cv_content?.github || 
+                      cvData.cv_content?.contact?.github || 
+                      '',
             },
             summary: cvData.cv_content?.summary || 'Your professional summary tailored for this job.',
             skills: cvData.cv_content?.skills || ['Skill 1', 'Skill 2', 'Skill 3'],
@@ -72,8 +110,10 @@ export const CVViewer: React.FC = () => {
       }
     };
     
-    loadCV();
-  }, [cvId]);
+    if (userProfile) {
+      loadCV();
+    }
+  }, [cvId, userProfile]);
   
   const handleTemplateChange = async (templateName: string) => {
     if (!cv || !cvId) return;
@@ -224,9 +264,11 @@ export const CVViewer: React.FC = () => {
             </div>
             
             <div className="overflow-hidden">
-              <div className="scale-[0.7] origin-top-left ml-[-15%] mt-[-15%] w-[142.85%]">
-                <CVRenderer template={selectedTemplate} cvData={cvData} id="cv-document" />
-              </div>
+              {cvData && (
+                <div className="scale-[0.7] origin-top-left ml-[-15%] mt-[-15%] w-[142.85%]">
+                  <CVRenderer template={selectedTemplate} cvData={cvData} id="cv-document" />
+                </div>
+              )}
             </div>
           </div>
         </div>

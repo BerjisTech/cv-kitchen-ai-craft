@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { jobDescription, userId, analysisId } = await req.json();
+    const { jobDescription, userId, analysisId, userProfile } = await req.json();
     
     if (!jobDescription || !userId || !analysisId) {
       console.error("Missing required parameters:", { jobDescription: !!jobDescription, userId: !!userId, analysisId: !!analysisId });
@@ -69,21 +69,25 @@ serve(async (req) => {
 
     console.log("Analysis found:", { id: analysisData[0].id });
 
-    // Get user profile data
-    const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`, {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+    // Get user profile data - use provided profile first if available
+    let profileData = userProfile;
     
-    let profileData = null;
-    if (profileResponse.ok) {
-      const profiles = await profileResponse.json();
-      if (profiles && profiles.length > 0) {
-        profileData = profiles[0];
+    // If no profile was provided in the request, fetch it from the database
+    if (!profileData) {
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (profileResponse.ok) {
+        const profiles = await profileResponse.json();
+        if (profiles && profiles.length > 0) {
+          profileData = profiles[0];
+        }
       }
     }
 
@@ -174,7 +178,7 @@ serve(async (req) => {
           messages: [
             { 
               role: 'system', 
-              content: 'You are an expert CV writer who helps tailor CVs based on job descriptions. Return a structured JSON response only.' 
+              content: 'You are an expert CV writer who helps tailor CVs based on job descriptions. Return a structured JSON response only. Use ONLY the user data provided - do not add fictional data or replace any real user data with placeholders.' 
             },
             { role: 'user', content: prompt }
           ],
@@ -208,6 +212,37 @@ serve(async (req) => {
         
         // Add title to the CV content based on job description
         generatedCV.title = cvTitle;
+        
+        // Ensure user's real name is used correctly
+        if (profileData && profileData.full_name) {
+          if (generatedCV.header && generatedCV.header.name) {
+            generatedCV.header.name = profileData.full_name;
+          } else if (generatedCV.name) {
+            generatedCV.name = profileData.full_name;
+          }
+        }
+        
+        // Ensure user's real email is used
+        if (profileData && profileData.email) {
+          if (generatedCV.header && generatedCV.header.email) {
+            generatedCV.header.email = profileData.email;
+          } else if (generatedCV.contact && generatedCV.contact.email) {
+            generatedCV.contact.email = profileData.email;
+          } else if (generatedCV.email) {
+            generatedCV.email = profileData.email;
+          }
+        }
+        
+        // Ensure user's real phone is used
+        if (profileData && profileData.phone) {
+          if (generatedCV.header && generatedCV.header.phone) {
+            generatedCV.header.phone = profileData.phone;
+          } else if (generatedCV.contact && generatedCV.contact.phone) {
+            generatedCV.contact.phone = profileData.phone;
+          } else if (generatedCV.phone) {
+            generatedCV.phone = profileData.phone;
+          }
+        }
       } catch (parseError) {
         console.error('Error parsing OpenAI response as JSON:', parseError);
         return new Response(
@@ -286,13 +321,18 @@ Here's the job description:
 
 ${jobDescription}
 
+IMPORTANT: Use ONLY the real user data provided. Do not use placeholder names, emails, or made-up information. If user data is incomplete, leave those sections minimal rather than inventing details.
 `;
 
   if (profileData) {
     prompt += `
 User profile information:
 - Name: ${profileData.full_name || 'Not provided'}
+- Email: ${profileData.email || 'Not provided'}
+- Phone: ${profileData.phone || 'Not provided'}
+- Location: ${profileData.location || 'Not provided'}
 ${profileData.bio ? `- Bio: ${profileData.bio}` : ''}
+${profileData.website ? `- Website: ${profileData.website}` : ''}
 `;
   }
 
@@ -352,7 +392,10 @@ Each work experience should include: title, company, dates, and bullets (array o
 Each education item should include: degree, institution, and year.
 
 Return ONLY a valid JSON object without any explanation or additional text.
+
+FINAL REMINDER: Use the user's actual name (${profileData?.full_name || 'As provided in their profile'}) and contact information. DO NOT use placeholder names like "John Smith" or fictional data.
 `;
 
   return prompt;
 }
+

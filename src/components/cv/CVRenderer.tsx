@@ -14,8 +14,16 @@ export const CVRenderer: React.FC<CVRendererProps> = ({
   cvData,
   id = 'cv-document'
 }) => {
+  // Make sure we're using the correctly formatted data
+  const sanitizedData: CVData = {
+    ...cvData,
+    // Ensure we never use placeholder data
+    fullName: cvData.fullName && cvData.fullName !== 'Your Name' ? cvData.fullName : '',
+    title: cvData.title && cvData.title !== 'Professional Title' ? cvData.title : '',
+  };
+  
   // Get the correct template component or fallback to modern
   const Template = cvTemplates[template] || cvTemplates['modern'];
   
-  return <Template data={cvData} id={id} />;
+  return <Template data={sanitizedData} id={id} />;
 };

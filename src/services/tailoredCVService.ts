@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TailoredCV } from '@/types/tailoredCV';
 import { toast } from '@/components/ui/sonner';
+import { getProfile } from './profileService';
 
 /**
  * Generates a tailored CV for a specific job based on analysis
@@ -38,6 +39,12 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
       throw new Error('User not authenticated');
     }
     
+    // Get the user's profile first to include in the request
+    const userProfile = await getProfile();
+    if (!userProfile) {
+      console.warn('Could not fetch user profile, CV may contain placeholder data');
+    }
+    
     toast.info('Generating tailored CV... This may take a moment.');
     
     // Call the edge function to generate the CV
@@ -45,7 +52,8 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
       body: { 
         jobDescription,
         userId: user.id,
-        analysisId
+        analysisId,
+        userProfile  // Include the user's profile data in the request
       }
     });
     
