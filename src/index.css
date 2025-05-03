@@ -111,4 +111,19 @@
   .sidebar-item-active {
     @apply bg-primary/20 text-primary;
   }
+
+  .dark{
+    .glass {
+      @apply bg-black/80 backdrop-blur-sm border border-black/30 shadow-lg;
+    }
+    .glass-card {
+      @apply bg-black/80 backdrop-blur-sm border border-black/30 shadow-lg;
+    }
+    .sidebar-item-active {
+      @apply bg-primary/20 text-primary;
+    }
+    .sidebar-item {
+      @apply bg-primary/10 text-primary;
+    }
+  }
 }
