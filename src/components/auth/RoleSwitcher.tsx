@@ -2,8 +2,9 @@
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UserCog, Briefcase, User as UserIcon } from 'lucide-react';
-import { useAuth, UserRole } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import type { UserRole } from '@/context/AuthContext';
 
 export const RoleSwitcher: React.FC = () => {
   const { userRole, activeRole, switchRole, isAdmin } = useAuth();

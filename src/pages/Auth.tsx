@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,17 +23,24 @@ const Auth = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/kitchen');
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSignUp) {
-      await signUp(email, password, fullName);
-    } else {
-      await signIn(email, password);
+    try {
+      if (isSignUp) {
+        await signUp(email, password, { full_name: fullName });
+        toast.success("Account created! Please check your email for verification.");
+      } else {
+        await signIn(email, password);
+        toast.success("Signed in successfully");
+      }
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      toast.error(error.message || "Authentication failed");
     }
   };
 

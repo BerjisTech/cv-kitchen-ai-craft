@@ -2,18 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './components/ThemeProvider';
+import { ThemeProvider } from './context/ThemeProvider';
 import { useTheme } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import { UserProvider, useAuth } from './context/AuthContext';
-import LandingPage from './pages/LandingPage';
-import SignUp from './pages/SignUp';
-import SignIn from './pages/SignIn';
 import Kitchen from './pages/Kitchen';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Shelf from './pages/Shelf';
 import { CVViewer } from './components/kitchen/CVViewer';
+import Auth from './pages/Auth';
+import AuthCallback from './pages/AuthCallback';
 
 const queryClient = new QueryClient();
 
@@ -25,7 +24,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;
@@ -46,9 +45,9 @@ const App = () => {
           <BrowserRouter>
             <UserProvider>
               <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/signin" element={<SignIn />} />
+                <Route path="/" element={<Navigate to="/kitchen" />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route
                   path="/kitchen"
                   element={

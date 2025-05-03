@@ -1,268 +1,218 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { TailoredCV, CV_TEMPLATES, updateCVTemplate } from '@/services/tailoredCVService';
-import { toast } from '@/components/ui/sonner';
-import { Download, ArrowLeft, Mail } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getTailoredCV, updateTailoredCV } from '@/services/tailoredCVService';
+import { TailoredCV } from '@/types/tailoredCV';
+import { FileText, Download, ArrowLeft, FileEdit } from 'lucide-react';
 
 export const CVViewer: React.FC = () => {
   const { cvId } = useParams<{ cvId: string }>();
   const navigate = useNavigate();
-  const [cv, setCv] = useState<TailoredCV | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState('modern');
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
-
+  
+  const [cv, setCV] = useState<TailoredCV | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('modern');
+  
   useEffect(() => {
-    const fetchCV = async () => {
-      if (!cvId) {
-        toast.error("No CV ID provided");
-        navigate('/kitchen');
-        return;
-      }
-
+    const loadCV = async () => {
+      if (!cvId) return;
+      
+      setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('tailored_cvs')
-          .select('*')
-          .eq('id', cvId)
-          .single();
-
-        if (error) {
-          throw error;
+        const cvData = await getTailoredCV(cvId);
+        if (cvData) {
+          setCV(cvData);
+          setSelectedTemplate(cvData.template || 'modern');
         }
-
-        setCv(data as TailoredCV);
-        setSelectedTemplate(data.template);
       } catch (error) {
-        console.error("Error fetching CV:", error);
-        toast.error("Failed to load CV");
-        navigate('/kitchen');
+        console.error('Error loading CV:', error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchCV();
-  }, [cvId, navigate]);
-
-  const handleTemplateChange = async (template: string) => {
-    if (!cvId) return;
     
-    setSelectedTemplate(template);
+    loadCV();
+  }, [cvId]);
+  
+  const handleTemplateChange = async (templateName: string) => {
+    if (!cv || !cvId) return;
     
+    setSelectedTemplate(templateName);
     try {
-      await updateCVTemplate(cvId, template);
+      const updatedCV = await updateTailoredCV(cvId, templateName);
+      if (updatedCV) {
+        setCV(updatedCV);
+      }
     } catch (error) {
-      console.error("Error updating template:", error);
-      toast.error("Failed to update template");
+      console.error('Error updating template:', error);
     }
   };
-
-  const handleDownloadPDF = async () => {
-    if (!cvId) return;
-    
-    setIsGeneratingPDF(true);
-    try {
-      // In a real implementation, this would call an API to generate and download the PDF
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-      toast.success("PDF downloaded successfully");
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast.error("Failed to download PDF");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
+  
+  const handleDownloadPDF = () => {
+    // Implement PDF download functionality
+    console.log('Download PDF', cv);
+    // This would normally trigger a PDF generation and download
   };
-
-  const handleGenerateCoverLetter = async () => {
-    if (!cv) return;
-    
-    setIsGeneratingCoverLetter(true);
-    try {
-      // In a real implementation, this would call an API to generate a cover letter
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      toast.success("Cover letter generated successfully");
-      navigate(`/kitchen/cover-letter/${cvId}`);
-    } catch (error) {
-      console.error("Error generating cover letter:", error);
-      toast.error("Failed to generate cover letter");
-    } finally {
-      setIsGeneratingCoverLetter(false);
-    }
+  
+  const handleGenerateCoverLetter = () => {
+    // Implement cover letter generation
+    console.log('Generate cover letter for', cv);
+    // This would navigate to cover letter generation page or modal
   };
-
+  
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>Loading CV...</p>
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }
-
+  
   if (!cv) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>CV not found</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <FileText className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h1 className="mt-4 text-2xl font-semibold">CV Not Found</h1>
+          <p className="mt-2 text-muted-foreground">The requested CV couldn't be found.</p>
+          <Button
+            onClick={() => navigate(-1)}
+            variant="outline"
+            className="mt-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+          </Button>
+        </div>
       </div>
     );
   }
-
+  
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/kitchen')}
-          className="mb-4"
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <Button
+          onClick={() => navigate(-1)}
+          variant="outline"
+          size="sm"
+          className="gap-2"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Kitchen
+          <ArrowLeft className="h-4 w-4" /> Back
         </Button>
+        
+        <div className="flex gap-2">
+          <Button
+            onClick={handleDownloadPDF}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" /> Download PDF
+          </Button>
+          
+          <Button
+            onClick={handleGenerateCoverLetter}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <FileEdit className="h-4 w-4" /> Generate Cover Letter
+          </Button>
+        </div>
+      </div>
+      
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">Your Tailored CV</h1>
         <p className="text-muted-foreground">
-          This CV has been tailored based on the job description analysis.
+          Customized for the job description.
         </p>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="p-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold mb-2">
-                {cv.cv_content.header?.name || "Your Name"}
-              </h2>
-              <p className="text-muted-foreground">
-                {cv.cv_content.header?.email && `${cv.cv_content.header.email} | `}
-                {cv.cv_content.header?.phone && `${cv.cv_content.header.phone} | `}
-                {cv.cv_content.header?.location}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Professional Summary</h3>
-              <p>{cv.cv_content.summary}</p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">Work Experience</h3>
-              {cv.cv_content.workExperience?.map((job: any, index: number) => (
-                <div key={index} className="mb-4">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-medium">{job.title} at {job.company}</h4>
-                    <span className="text-sm text-muted-foreground">{job.dates}</span>
+      
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        <div className="space-y-6 md:col-span-1">
+          <Card className="p-4">
+            <h3 className="mb-4 font-medium">Template</h3>
+            <div className="space-y-2">
+              {['modern', 'classic', 'minimal', 'creative'].map((template) => (
+                <div
+                  key={template}
+                  className={`cursor-pointer rounded-md border p-3 ${
+                    selectedTemplate === template
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-accent'
+                  }`}
+                  onClick={() => handleTemplateChange(template)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="capitalize">{template}</span>
+                    {selectedTemplate === template && (
+                      <div className="h-2 w-2 rounded-full bg-primary"></div>
+                    )}
                   </div>
-                  <ul className="list-disc pl-5 mt-2">
-                    {job.bullets.map((bullet: string, idx: number) => (
-                      <li key={idx} className="text-sm mb-1">{bullet}</li>
-                    ))}
-                  </ul>
                 </div>
               ))}
             </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">Education</h3>
-              {cv.cv_content.education?.map((edu: any, index: number) => (
-                <div key={index} className="mb-2">
-                  <div className="flex justify-between">
-                    <h4 className="font-medium">{edu.degree}</h4>
-                    <span className="text-sm text-muted-foreground">{edu.year}</span>
-                  </div>
-                  <p className="text-sm">{edu.institution}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {cv.cv_content.skills?.map((skill: string, index: number) => (
-                  <span 
-                    key={index} 
-                    className="bg-muted px-3 py-1 rounded-full text-sm"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {cv.cv_content.certifications && cv.cv_content.certifications.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium mb-2">Certifications</h3>
-                <ul className="list-disc pl-5">
-                  {cv.cv_content.certifications.map((cert: string, index: number) => (
-                    <li key={index}>{cert}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </Card>
         </div>
-
-        <div>
-          <Card className="p-6 mb-6">
-            <h3 className="text-lg font-medium mb-4">CV Template</h3>
-            <Tabs 
-              defaultValue={selectedTemplate} 
-              value={selectedTemplate}
-              onValueChange={handleTemplateChange}
-              className="w-full"
-            >
-              <TabsList className="grid grid-cols-3 mb-4">
-                {CV_TEMPLATES.map(template => (
-                  <TabsTrigger key={template.id} value={template.id}>
-                    {template.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              {CV_TEMPLATES.map(template => (
-                <TabsContent key={template.id} value={template.id} className="mt-0">
-                  <div className="bg-muted aspect-[3/4] rounded-md flex items-center justify-center">
-                    <p className="text-center text-muted-foreground text-sm">
-                      {template.name} Template Preview
-                    </p>
+        
+        <div className="md:col-span-3">
+          <Card className="overflow-hidden">
+            <div className="border-b bg-muted/50 p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-medium">CV Preview</h2>
+                <span className="text-xs text-muted-foreground">
+                  {selectedTemplate.charAt(0).toUpperCase() + selectedTemplate.slice(1)} Template
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* CV Content would be rendered here based on the template */}
+              {/* This is just a placeholder representation */}
+              <div className="space-y-6">
+                <div className="border-b pb-4">
+                  <h1 className="text-2xl font-bold">{cv.cv_content?.name || 'Your Name'}</h1>
+                  <p className="text-muted-foreground">{cv.cv_content?.title || 'Professional Title'}</p>
+                </div>
+                
+                <div>
+                  <h2 className="mb-3 text-lg font-semibold">Summary</h2>
+                  <p>{cv.cv_content?.summary || 'Your professional summary tailored for this job.'}</p>
+                </div>
+                
+                <div>
+                  <h2 className="mb-3 text-lg font-semibold">Experience</h2>
+                  {(cv.cv_content?.experience || []).map((exp: any, index: number) => (
+                    <div key={index} className="mb-4">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{exp.title || 'Job Title'}</h3>
+                        <span className="text-sm text-muted-foreground">
+                          {exp.period || 'Time Period'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {exp.company || 'Company Name'}
+                      </p>
+                      <p className="mt-1 text-sm">{exp.description || 'Job description'}</p>
+                    </div>
+                  ))}
+                </div>
+                
+                <div>
+                  <h2 className="mb-3 text-lg font-semibold">Skills</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {(cv.cv_content?.skills || ['Skill 1', 'Skill 2', 'Skill 3']).map((skill: string, index: number) => (
+                      <span
+                        key={index}
+                        className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                      >
+                        {skill}
+                      </span>
+                    ))}
                   </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-lg font-medium mb-4">Actions</h3>
-            <div className="space-y-3">
-              <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                onClick={handleDownloadPDF}
-                disabled={isGeneratingPDF}
-              >
-                <Download className="mr-2 h-4 w-4" /> 
-                {isGeneratingPDF ? "Generating PDF..." : "Download CV as PDF"}
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleGenerateCoverLetter}
-                disabled={isGeneratingCoverLetter}
-              >
-                <Mail className="mr-2 h-4 w-4" /> 
-                {isGeneratingCoverLetter ? "Generating..." : "Generate Cover Letter"}
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate('/shelf')}
-              >
-                Save to Shelf
-              </Button>
+                </div>
+              </div>
             </div>
           </Card>
         </div>
