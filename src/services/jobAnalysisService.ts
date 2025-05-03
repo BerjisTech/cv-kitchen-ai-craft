@@ -19,6 +19,8 @@ export async function analyzeJobDescription(jobDescription: string): Promise<{ a
       return null;
     }
     
+    console.log("Calling analyze-job-description function with user ID:", user.id);
+    
     const { data, error } = await supabase.functions.invoke('analyze-job-description', {
       body: {
         jobDescription,
@@ -54,7 +56,10 @@ export async function getRecentAnalyses(): Promise<JobAnalysis[]> {
       .order('created_at', { ascending: false })
       .limit(5);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching recent analyses:", error);
+      return [];
+    }
     
     return data as JobAnalysis[];
   } catch (error: any) {
@@ -72,7 +77,10 @@ export async function getAnalysisById(id: string): Promise<JobAnalysis | null> {
       .eq('id', id)
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching analysis:", error);
+      return null;
+    }
     
     return data as JobAnalysis;
   } catch (error: any) {

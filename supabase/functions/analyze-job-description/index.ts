@@ -30,16 +30,13 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
 
-    // Get Supabase URL and anon key from environment variables
+    // Get Supabase URL and service role key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error('Supabase configuration not found');
     }
-    
-    // We'll access the database directly through the REST API instead of using the client
-    // This avoids issues with Supabase client creation in the edge function
 
     // Call OpenAI API to analyze the job description
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -72,13 +69,15 @@ serve(async (req) => {
       throw new Error(`OpenAI API error: ${analysisResult.error?.message || 'Unknown error'}`);
     }
 
-    // Store the analysis in the database using Supabase REST API
+    // Store the analysis in the database using Supabase REST API with service role key
+    // This bypasses RLS and ensures the edge function can always write to the database
     const timestamp = new Date().toISOString();
     const dbResponse = await fetch(`${supabaseUrl}/rest/v1/job_analyses`, {
       method: 'POST',
       headers: {
-        'apikey': supabaseAnonKey,
+        'apikey': supabaseServiceRoleKey,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceRoleKey}`,
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
