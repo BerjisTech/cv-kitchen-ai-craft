@@ -1,434 +1,447 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { UserDocument } from "./documentService";
-import { toast } from "@/components/ui/sonner";
-import { CVData } from "@/types/CVData";
-import { ProfileData, updateProfile } from "./profileService";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
-/**
- * Extract CV data from uploaded documents and LinkedIn data
- */
-export async function extractCVData(documentId: string): Promise<Partial<CVData> | null> {
+interface ExtractedCVData {
+  fullName?: string;
+  title?: string;
+  contact?: {
+    email?: string;
+    phone?: string;
+    location?: string;
+    website?: string;
+    linkedin?: string;
+    github?: string;
+  };
+  summary?: string;
+  skills?: string[];
+  experience?: Array<{
+    company?: string;
+    role?: string;
+    start?: string;
+    end?: string | null;
+    description?: string;
+  }>;
+  education?: Array<{
+    school?: string;
+    degree?: string;
+    start?: string;
+    end?: string | null;
+    description?: string;
+  }>;
+  languages?: Array<{
+    language?: string;
+    proficiency?: string;
+  }>;
+  certifications?: Array<{
+    name?: string;
+    issuer?: string;
+    date?: string;
+  }>;
+}
+
+export const extractCVData = async (documentId: string): Promise<ExtractedCVData | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user) {
       toast.error("You must be logged in to extract CV data");
       return null;
     }
-    
-    toast.info("Extracting data from your CV...");
-    
-    // Call the edge function to extract CV data
-    const { data, error } = await supabase.functions.invoke('extract-cv-data', {
-      body: {
-        documentId,
-        userId: user.id
-      }
-    });
-    
-    if (error) {
-      console.error("Error extracting CV data:", error);
-      toast.error("Failed to extract data from CV");
-      return null;
-    }
-    
-    if (!data) {
-      toast.error("No data could be extracted from the CV");
-      return null;
-    }
-    
-    console.log("Successfully extracted CV data:", data);
-    toast.success("Successfully extracted data from your CV");
-    return data as Partial<CVData>;
-  } catch (error) {
-    console.error("Error in extractCVData:", error);
-    toast.error("Failed to extract data from CV");
-    return null;
-  }
-}
 
-/**
- * Update user profile with data extracted from CV
- */
-export async function updateProfileWithCVData(cvData: Partial<CVData>): Promise<boolean> {
+    console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
+    
+    // Call the Edge Function to extract data from the CV
+    const { data, error } = await supabase.functions.invoke('extract-cv-data', {
+      body: { documentId, userId: user.id },
+    });
+
+    if (error) {
+      console.error("Error calling extract-cv-data function:", error);
+      throw new Error(`Failed to extract data: ${error.message}`);
+    }
+
+    console.log("Extracted CV data:", data);
+    return data;
+  } catch (error) {
+    console.error('Error in extractCVData:', error);
+    throw error;
+  }
+};
+
+export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<boolean> => {
   try {
-    if (!cvData) return false;
-    
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user) {
       toast.error("You must be logged in to update your profile");
       return false;
     }
-    
-    console.log("Updating profile with CV data:", cvData);
-    
-    // Convert CV data to profile format
-    const profileUpdates: Partial<ProfileData> = {
-      full_name: cvData.fullName,
-      role: cvData.title,
-      bio: cvData.summary,
-      location: cvData.contact?.location
-    };
-    
-    if (cvData.contact?.email) {
-      profileUpdates.email = cvData.contact.email;
-    }
-    
-    if (cvData.contact?.phone) {
-      profileUpdates.phone = cvData.contact.phone;
-    }
-    
-    // Update the user's profile with the extracted data
-    try {
-      await updateProfile(profileUpdates);
-      toast.success("Profile updated with CV data");
+
+    console.log("Updating profile with extracted CV data");
+
+    // Start a batch of database operations
+    const updates: Promise<any>[] = [];
+
+    // 1. Update basic profile information
+    if (cvData.fullName || cvData.title || cvData.summary || cvData.contact) {
+      const profileUpdate = supabase
+        .from('profiles')
+        .update({
+          full_name: cvData.fullName || undefined,
+          role: cvData.title || undefined,
+          bio: cvData.summary || undefined,
+          location: cvData.contact?.location || undefined,
+          website: cvData.contact?.website || undefined,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
       
-      // Save extracted skills, experience, and education data to specific tables for later use
-      await saveExtractedCVDetailsData(user.id, cvData);
+      updates.push(profileUpdate);
+    }
+
+    // 2. Process and store skills
+    if (cvData.skills && cvData.skills.length > 0) {
+      console.log(`Processing ${cvData.skills.length} skills`);
       
+      // First, fetch existing skills to avoid duplicates
+      const { data: existingSkills } = await supabase
+        .from('user_skills')
+        .select('name')
+        .eq('user_id', user.id);
+      
+      const existingSkillNames = existingSkills ? existingSkills.map(skill => skill.name.toLowerCase()) : [];
+      
+      // Filter out skills that already exist
+      const newSkills = cvData.skills.filter(skill => 
+        skill && !existingSkillNames.includes(skill.toLowerCase())
+      );
+      
+      if (newSkills.length > 0) {
+        const skillsData = newSkills.map(skill => ({
+          user_id: user.id,
+          name: skill,
+          source: 'cv_extraction',
+          // Generate a random skill level between 70-100
+          level: Math.floor(Math.random() * 31) + 70
+        }));
+        
+        const skillsUpdate = supabase
+          .from('user_skills')
+          .insert(skillsData);
+        
+        updates.push(skillsUpdate);
+      }
+    }
+
+    // 3. Process and store work experience
+    if (cvData.experience && cvData.experience.length > 0) {
+      console.log(`Processing ${cvData.experience.length} work experiences`);
+      
+      // Fetch existing experience to avoid duplicates
+      const { data: existingExperiences } = await supabase
+        .from('user_experience')
+        .select('company, role, start_date')
+        .eq('user_id', user.id);
+      
+      // Create a function to check if an experience already exists
+      const experienceExists = (exp: any) => {
+        return existingExperiences ? existingExperiences.some(existing => 
+          existing.company === exp.company && 
+          existing.role === exp.role &&
+          existing.start_date === exp.start_date
+        ) : false;
+      };
+      
+      // Process each experience entry
+      for (const exp of cvData.experience) {
+        if (!exp.company || !exp.role) continue;
+        
+        const experienceEntry = {
+          user_id: user.id,
+          company: exp.company,
+          role: exp.role,
+          start_date: exp.start || null,
+          end_date: exp.end || null,
+          description: exp.description || null,
+          source: 'cv_extraction'
+        };
+        
+        // Only add if it doesn't exist
+        if (!experienceExists(experienceEntry)) {
+          const experienceUpdate = supabase
+            .from('user_experience')
+            .insert([experienceEntry]);
+          
+          updates.push(experienceUpdate);
+        }
+      }
+    }
+
+    // 4. Process and store education
+    if (cvData.education && cvData.education.length > 0) {
+      console.log(`Processing ${cvData.education.length} education entries`);
+      
+      // Fetch existing education to avoid duplicates
+      const { data: existingEducation } = await supabase
+        .from('user_education')
+        .select('institution, degree, start_year')
+        .eq('user_id', user.id);
+      
+      // Create a function to check if an education entry already exists
+      const educationExists = (edu: any) => {
+        return existingEducation ? existingEducation.some(existing => 
+          existing.institution === edu.institution && 
+          existing.degree === edu.degree
+        ) : false;
+      };
+      
+      // Process each education entry
+      for (const edu of cvData.education) {
+        if (!edu.school || !edu.degree) continue;
+        
+        const educationEntry = {
+          user_id: user.id,
+          institution: edu.school,
+          degree: edu.degree,
+          start_year: edu.start || null,
+          end_year: edu.end || null,
+          description: edu.description || null,
+          source: 'cv_extraction'
+        };
+        
+        // Only add if it doesn't exist
+        if (!educationExists(educationEntry)) {
+          const educationUpdate = supabase
+            .from('user_education')
+            .insert([educationEntry]);
+          
+          updates.push(educationUpdate);
+        }
+      }
+    }
+
+    // 5. Process and store languages
+    if (cvData.languages && cvData.languages.length > 0) {
+      console.log(`Processing ${cvData.languages.length} languages`);
+      
+      // Fetch existing languages to avoid duplicates
+      const { data: existingLanguages } = await supabase
+        .from('user_languages')
+        .select('language')
+        .eq('user_id', user.id);
+      
+      const existingLanguageNames = existingLanguages ? existingLanguages.map(lang => lang.language.toLowerCase()) : [];
+      
+      // Filter out languages that already exist
+      const newLanguages = cvData.languages.filter(lang => 
+        lang.language && !existingLanguageNames.includes(lang.language.toLowerCase())
+      );
+      
+      if (newLanguages.length > 0) {
+        const languagesData = newLanguages.map(lang => ({
+          user_id: user.id,
+          language: lang.language || '',
+          level: lang.proficiency || 'Intermediate'
+        }));
+        
+        const languagesUpdate = supabase
+          .from('user_languages')
+          .insert(languagesData);
+        
+        updates.push(languagesUpdate);
+      }
+    }
+
+    // 6. Process and store certifications
+    if (cvData.certifications && cvData.certifications.length > 0) {
+      console.log(`Processing ${cvData.certifications.length} certifications`);
+      
+      // Fetch existing certifications to avoid duplicates
+      const { data: existingCertifications } = await supabase
+        .from('user_certifications')
+        .select('name, issuer')
+        .eq('user_id', user.id);
+      
+      // Create a function to check if a certification already exists
+      const certificationExists = (cert: any) => {
+        return existingCertifications ? existingCertifications.some(existing => 
+          existing.name === cert.name && 
+          existing.issuer === cert.issuer
+        ) : false;
+      };
+      
+      // Process each certification
+      for (const cert of cvData.certifications) {
+        if (!cert.name) continue;
+        
+        const certEntry = {
+          user_id: user.id,
+          name: cert.name,
+          issuer: cert.issuer || null,
+          date: cert.date || null
+        };
+        
+        // Only add if it doesn't exist
+        if (!certificationExists(certEntry)) {
+          const certUpdate = supabase
+            .from('user_certifications')
+            .insert([certEntry]);
+          
+          updates.push(certUpdate);
+        }
+      }
+    }
+
+    // Execute all updates and wait for them to complete
+    if (updates.length > 0) {
+      const results = await Promise.all(updates);
+      
+      // Check for errors
+      for (const result of results) {
+        if (result.error) {
+          console.error("Error updating profile data:", result.error);
+          return false;
+        }
+      }
+      
+      console.log("Successfully updated profile with CV data");
       return true;
-    } catch (error) {
-      console.error("Error updating profile with CV data:", error);
-      toast.error("Failed to update profile with CV data");
-      return false;
+    } else {
+      console.log("No updates to make from CV data");
+      return true;
     }
   } catch (error) {
-    console.error("Error in updateProfileWithCVData:", error);
-    toast.error("Failed to update profile with CV data");
+    console.error('Error in updateProfileWithCVData:', error);
     return false;
   }
-}
+};
 
-/**
- * Save extracted skills, experience and education data to database
- */
-async function saveExtractedCVDetailsData(userId: string, cvData: Partial<CVData>): Promise<void> {
-  try {
-    console.log("Saving extracted CV details to database:", cvData);
-    
-    // Save skills
-    if (cvData.skills && cvData.skills.length > 0) {
-      console.log("Saving skills:", cvData.skills);
-      
-      // Delete existing skills from CV extraction to avoid duplicates
-      await supabase
-        .from('user_skills')
-        .delete()
-        .eq('user_id', userId)
-        .eq('source', 'cv_extract');
-      
-      // Batch insert all skills
-      const skillsToInsert = cvData.skills.map(skill => ({
-        user_id: userId,
-        name: skill,
-        source: 'cv_extract'
-      }));
-      
-      const { error: skillsError } = await supabase
-        .from('user_skills')
-        .insert(skillsToInsert);
-        
-      if (skillsError) {
-        console.error("Error saving skills:", skillsError);
-      } else {
-        console.log(`Saved ${cvData.skills.length} skills to database`);
-      }
-    }
-    
-    // Save experience entries
-    if (cvData.experience && cvData.experience.length > 0) {
-      console.log("Saving experience:", cvData.experience);
-      
-      // Delete existing experience from CV extraction to avoid duplicates
-      await supabase
-        .from('user_experience')
-        .delete()
-        .eq('user_id', userId)
-        .eq('source', 'cv_extract');
-      
-      // Batch insert all experience entries
-      const experienceToInsert = cvData.experience.map(exp => ({
-        user_id: userId,
-        company: exp.company,
-        role: exp.role,
-        start_date: exp.start,
-        end_date: exp.end === 'Present' ? null : exp.end,
-        description: exp.description || '',
-        source: 'cv_extract'
-      }));
-      
-      const { error: expError } = await supabase
-        .from('user_experience')
-        .insert(experienceToInsert);
-        
-      if (expError) {
-        console.error("Error saving experience:", expError);
-      } else {
-        console.log(`Saved ${cvData.experience.length} experience entries to database`);
-      }
-    }
-    
-    // Save education entries
-    if (cvData.education && cvData.education.length > 0) {
-      console.log("Saving education:", cvData.education);
-      
-      // Delete existing education from CV extraction to avoid duplicates
-      await supabase
-        .from('user_education')
-        .delete()
-        .eq('user_id', userId)
-        .eq('source', 'cv_extract');
-      
-      // Batch insert all education entries
-      const educationToInsert = cvData.education.map(edu => ({
-        user_id: userId,
-        institution: edu.school,
-        degree: edu.degree,
-        start_year: edu.start,
-        end_year: edu.end === 'Present' ? null : edu.end,
-        description: edu.description || '',
-        source: 'cv_extract'
-      }));
-      
-      const { error: eduError } = await supabase
-        .from('user_education')
-        .insert(educationToInsert);
-        
-      if (eduError) {
-        console.error("Error saving education:", eduError);
-      } else {
-        console.log(`Saved ${cvData.education.length} education entries to database`);
-      }
-    }
-    
-    // Save languages
-    if (cvData.languages && cvData.languages.length > 0) {
-      console.log("Saving languages:", cvData.languages);
-      
-      // Delete existing languages from CV extraction to avoid duplicates
-      await supabase
-        .from('user_languages')
-        .delete()
-        .eq('user_id', userId);
-      
-      // Batch insert all languages
-      const languagesToInsert = cvData.languages.map(lang => ({
-        user_id: userId,
-        language: lang.language,
-        level: lang.proficiency || 'Conversational'
-      }));
-      
-      const { error: langError } = await supabase
-        .from('user_languages')
-        .insert(languagesToInsert);
-        
-      if (langError) {
-        console.error("Error saving languages:", langError);
-      } else {
-        console.log(`Saved ${cvData.languages.length} languages to database`);
-      }
-    }
-    
-    // Save certifications
-    if (cvData.certifications && cvData.certifications.length > 0) {
-      console.log("Saving certifications:", cvData.certifications);
-      
-      // Delete existing certifications from CV extraction to avoid duplicates
-      await supabase
-        .from('user_certifications')
-        .delete()
-        .eq('user_id', userId);
-      
-      // Batch insert all certifications
-      const certificationsToInsert = cvData.certifications.map(cert => ({
-        user_id: userId,
-        name: cert.name,
-        issuer: cert.issuer || '',
-        date: cert.date || ''
-      }));
-      
-      const { error: certError } = await supabase
-        .from('user_certifications')
-        .insert(certificationsToInsert);
-        
-      if (certError) {
-        console.error("Error saving certifications:", certError);
-      } else {
-        console.log(`Saved ${cvData.certifications.length} certifications to database`);
-      }
-    }
-    
-  } catch (error) {
-    console.error("Error saving detailed CV data:", error);
-    // Don't throw, just log the error
-  }
-}
-
-/**
- * Get all CV context for AI generation
- */
-export async function getAllCVContext(): Promise<{
-  cvDocuments: UserDocument[],
-  linkedInData: any,
-  profileData: ProfileData | null,
-  extractedCVData: any[]
-} | null> {
+export const enhanceUserProfile = async (): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return null;
-    
-    // Get all CV documents
-    const { data: documents, error: documentsError } = await supabase
+    if (!user) {
+      toast.error("You must be logged in to enhance your profile");
+      return false;
+    }
+
+    // 1. Get all CV documents
+    const { data: documents, error: docsError } = await supabase
       .from('user_documents')
       .select('*')
       .eq('user_id', user.id)
       .eq('document_type', 'cv');
-      
-    if (documentsError) {
-      console.error("Error fetching CV documents:", documentsError);
-      return null;
+    
+    if (docsError) {
+      console.error("Error fetching CV documents:", docsError);
+      return false;
     }
     
-    // Get LinkedIn data if available
-    const { data: linkedInData, error: linkedInError } = await supabase
-      .from('linkedin_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-      
-    if (linkedInError && linkedInError.code !== 'PGRST116') {
-      console.error("Error fetching LinkedIn data:", linkedInError);
+    if (!documents || documents.length === 0) {
+      toast.info("No CVs found. Please upload a CV to enhance your profile.");
+      return false;
     }
-    
-    // Get profile data
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-      
-    if (profileError) {
-      console.error("Error fetching profile data:", profileError);
-    }
-    
-    // Get extracted CV data
-    const { data: extractedData, error: extractedError } = await supabase
-      .from('cv_extracted_data')
-      .select('*')
-      .eq('user_id', user.id);
-      
-    if (extractedError) {
-      console.error("Error fetching extracted CV data:", extractedError);
-    }
-    
-    // Get skills data
-    const { data: skillsData, error: skillsError } = await supabase
-      .from('user_skills')
-      .select('*')
-      .eq('user_id', user.id);
-      
-    if (skillsError) {
-      console.error("Error fetching user skills:", skillsError);
-    }
-    
-    // Get experience data
-    const { data: experienceData, error: experienceError } = await supabase
-      .from('user_experience')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('start_date', { ascending: false });
-      
-    if (experienceError) {
-      console.error("Error fetching user experience:", experienceError);
-    }
-    
-    // Get education data
-    const { data: educationData, error: educationError } = await supabase
-      .from('user_education')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('start_year', { ascending: false });
-      
-    if (educationError) {
-      console.error("Error fetching user education:", educationError);
-    }
-    
-    // Convert document_type to the expected type
-    const typedDocuments = documents ? documents.map(doc => ({
-      ...doc,
-      document_type: doc.document_type as 'cv' | 'portfolio' | 'certificate' | 'other'
-    })) as UserDocument[] : [];
-    
-    // Combine all user data
-    const enrichedProfileData = profileData ? {
-      ...profileData,
-      skills: skillsData || [],
-      experience: experienceData || [],
-      education: educationData || []
-    } : null;
-    
-    return {
-      cvDocuments: typedDocuments,
-      linkedInData: linkedInData || null,
-      profileData: enrichedProfileData as ProfileData | null,
-      extractedCVData: extractedData || []
-    };
-  } catch (error) {
-    console.error("Error gathering CV context:", error);
-    return null;
-  }
-}
 
-/**
- * Get user's comprehensive profile data from all sources
- */
-export async function getComprehensiveUserData(): Promise<any> {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return null;
-  
-  // Get basic profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    console.log(`Found ${documents.length} CV documents to process`);
     
-  // Get skills
-  const { data: skills } = await supabase
-    .from('user_skills')
-    .select('*')
-    .eq('user_id', user.id);
+    // 2. Extract data from all CVs
+    const allExtractedData: ExtractedCVData[] = [];
     
-  // Get experience
-  const { data: experience } = await supabase
-    .from('user_experience')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('start_date', { ascending: false });
+    for (const doc of documents) {
+      try {
+        const extractedData = await extractCVData(doc.id);
+        if (extractedData) {
+          allExtractedData.push(extractedData);
+        }
+      } catch (error) {
+        console.error(`Error extracting data from document ${doc.id}:`, error);
+        // Continue with other documents even if one fails
+      }
+    }
     
-  // Get education
-  const { data: education } = await supabase
-    .from('user_education')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('start_year', { ascending: false });
+    if (allExtractedData.length === 0) {
+      toast.error("Could not extract data from any of your CVs");
+      return false;
+    }
+
+    console.log(`Successfully extracted data from ${allExtractedData.length} CVs`);
     
-  // Get LinkedIn data
-  const { data: linkedin } = await supabase
-    .from('linkedin_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle();
+    // 3. Merge all extracted data
+    const mergedData: ExtractedCVData = {
+      fullName: allExtractedData[0]?.fullName || '',
+      title: allExtractedData[0]?.title || '',
+      contact: allExtractedData[0]?.contact || {},
+      summary: allExtractedData[0]?.summary || '',
+      skills: [],
+      experience: [],
+      education: [],
+      languages: [],
+      certifications: []
+    };
     
-  return {
-    profile,
-    skills,
-    experience,
-    education,
-    linkedin
-  };
-}
+    // Merge all skills, experiences, etc. from all CVs
+    allExtractedData.forEach(data => {
+      // Add skills
+      if (data.skills) {
+        data.skills.forEach(skill => {
+          if (skill && !mergedData.skills?.includes(skill)) {
+            mergedData.skills?.push(skill);
+          }
+        });
+      }
+      
+      // Add experiences
+      if (data.experience) {
+        data.experience.forEach(exp => {
+          const isDuplicate = mergedData.experience?.some(e => 
+            e.company === exp.company && e.role === exp.role && e.start === exp.start
+          );
+          if (!isDuplicate) {
+            mergedData.experience?.push(exp);
+          }
+        });
+      }
+      
+      // Add education
+      if (data.education) {
+        data.education.forEach(edu => {
+          const isDuplicate = mergedData.education?.some(e => 
+            e.school === edu.school && e.degree === edu.degree
+          );
+          if (!isDuplicate) {
+            mergedData.education?.push(edu);
+          }
+        });
+      }
+      
+      // Add languages
+      if (data.languages) {
+        data.languages.forEach(lang => {
+          const isDuplicate = mergedData.languages?.some(l => 
+            l.language === lang.language
+          );
+          if (!isDuplicate) {
+            mergedData.languages?.push(lang);
+          }
+        });
+      }
+      
+      // Add certifications
+      if (data.certifications) {
+        data.certifications.forEach(cert => {
+          const isDuplicate = mergedData.certifications?.some(c => 
+            c.name === cert.name && c.issuer === cert.issuer
+          );
+          if (!isDuplicate) {
+            mergedData.certifications?.push(cert);
+          }
+        });
+      }
+    });
+
+    // 4. Update profile with the merged data
+    const success = await updateProfileWithCVData(mergedData);
+    return success;
+  } catch (error) {
+    console.error('Error in enhanceUserProfile:', error);
+    return false;
+  }
+};

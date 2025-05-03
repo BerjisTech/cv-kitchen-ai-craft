@@ -19,6 +19,8 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { enhanceUserProfile } from '@/services/cvDataExtractorService';
+import { Sparkles } from 'lucide-react';
 
 const accountFormSchema = z.object({
   full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -48,6 +50,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
 
   const accountForm = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -148,10 +151,57 @@ const Settings = () => {
     }
   };
 
+  const handleEnhanceProfile = async () => {
+    setEnhancing(true);
+    toast.info('Enhancing your profile with all available data...');
+    
+    try {
+      const success = await enhanceUserProfile();
+      
+      if (success) {
+        toast.success('Profile enhanced successfully!');
+        
+        // Refresh the profile data
+        const data = await getProfile();
+        if (data) {
+          accountForm.reset({
+            full_name: data.full_name || "",
+            username: data.username || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            location: data.location || "",
+            bio: data.bio || ""
+          });
+        }
+        
+        toast.success('Profile data refreshed with enhanced information');
+      } else {
+        toast.error('Failed to enhance profile');
+      }
+    } catch (error) {
+      console.error('Error enhancing profile:', error);
+      toast.error('Failed to enhance profile');
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <Button 
+            size="sm" 
+            variant="default"
+            className="gap-2"
+            onClick={handleEnhanceProfile}
+            disabled={enhancing}
+          >
+            <Sparkles size={16} className={enhancing ? 'animate-pulse' : ''} />
+            Enhance Profile
+          </Button>
+        </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="glass mb-6">

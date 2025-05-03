@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileText, Trash2, RefreshCw } from 'lucide-react';
+import { FileText, Trash2, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UserDocument } from '@/services/documentService';
@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
+import { extractCVData, updateProfileWithCVData, enhanceUserProfile } from '@/services/cvDataExtractorService';
 
 interface CVDocumentsListProps {
   documents: UserDocument[];
@@ -31,6 +32,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   const [processingDocs, setProcessingDocs] = useState<{ [key: string]: boolean }>({});
   const [deletingDocs, setDeletingDocs] = useState<{ [key: string]: boolean }>({});
   const [processingAllDocs, setProcessingAllDocs] = useState(false);
+  const [enhancingProfile, setEnhancingProfile] = useState(false);
   
   const handleDelete = async (id: string) => {
     setDeletingDocs(prev => ({ ...prev, [id]: true }));
@@ -106,6 +108,32 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     }
   };
   
+  const handleEnhanceProfile = async () => {
+    setEnhancingProfile(true);
+    toast.info('Enhancing your profile with all available data...');
+    
+    try {
+      const success = await enhanceUserProfile();
+      
+      if (success) {
+        toast.success('Profile enhanced successfully!');
+        
+        // Reload the page to show the updated profile data
+        toast.info('Reloading page to show your enhanced profile...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast.error('Failed to enhance profile');
+      }
+    } catch (error) {
+      console.error('Error enhancing profile:', error);
+      toast.error('Failed to enhance profile');
+    } finally {
+      setEnhancingProfile(false);
+    }
+  };
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy');
@@ -118,18 +146,31 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     <div>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold">Uploaded CVs</h2>
-        {documents.length > 1 && (
+        <div className="flex gap-2">
           <Button 
             size="sm" 
-            variant="outline"
+            variant="default"
             className="gap-2"
-            onClick={handleExtractAllData}
-            disabled={processingAllDocs}
+            onClick={handleEnhanceProfile}
+            disabled={enhancingProfile || processingAllDocs || documents.length === 0}
           >
-            <RefreshCw size={16} className={processingAllDocs ? 'animate-spin' : ''} />
-            Extract All CVs
+            <Sparkles size={16} className={enhancingProfile ? 'animate-pulse' : ''} />
+            Enhance Profile
           </Button>
-        )}
+          
+          {documents.length > 1 && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="gap-2"
+              onClick={handleExtractAllData}
+              disabled={processingAllDocs || enhancingProfile}
+            >
+              <RefreshCw size={16} className={processingAllDocs ? 'animate-spin' : ''} />
+              Extract All CVs
+            </Button>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isLoading ? (
@@ -176,7 +217,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
                         variant="outline"
                         size="icon"
                         onClick={() => handleExtractData(doc.id)}
-                        disabled={processingDocs[doc.id] || processingAllDocs}
+                        disabled={processingDocs[doc.id] || processingAllDocs || enhancingProfile}
                       >
                         <RefreshCw size={18} className={processingDocs[doc.id] ? 'animate-spin' : ''} />
                       </Button>
@@ -194,7 +235,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
                         variant="outline"
                         size="icon"
                         onClick={() => handleDelete(doc.id)}
-                        disabled={deletingDocs[doc.id] || processingAllDocs}
+                        disabled={deletingDocs[doc.id] || processingAllDocs || enhancingProfile}
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -211,10 +252,8 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
       </div>
       {documents.length > 0 && (
         <div className="mt-3 text-sm text-muted-foreground">
-          <p>Click the <RefreshCw className="inline h-3 w-3" /> button to extract data from your CV and update your profile info, skills, and experience.</p>
-          {documents.length > 1 && (
-            <p className="mt-1">Or use the "Extract All CVs" button to process all CVs at once and update your profile.</p>
-          )}
+          <p>Click <Sparkles className="inline h-3 w-3" /> <strong>Enhance Profile</strong> to process your CV data and update your profile with skills, experience, and education.</p>
+          <p className="mt-1">Or use <RefreshCw className="inline h-3 w-3" /> to extract data from individual CVs.</p>
         </div>
       )}
     </div>

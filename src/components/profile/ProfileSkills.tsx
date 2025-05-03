@@ -56,7 +56,7 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           
         if (skillsData && skillsData.length > 0) {
           console.log("Fetched skills:", skillsData);
-          setSkills(skillsData as UserSkill[]);
+          setSkills(skillsData as unknown as UserSkill[]);
         } else {
           console.log("No skills found");
           setSkills([]);
@@ -74,15 +74,11 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           
         if (languagesData && languagesData.length > 0) {
           console.log("Fetched languages:", languagesData);
-          // Use type assertion with any as an intermediate step
-          setLanguages(languagesData as UserLanguage[]);
+          setLanguages(languagesData as unknown as UserLanguage[]);
         } else {
-          console.log("No languages found, using defaults");
-          // Default sample languages if none are found
-          setLanguages([
-            { id: '1', user_id: profile.id as string, language: 'English', level: 'Native' },
-            { id: '2', user_id: profile.id as string, language: 'Spanish', level: 'Intermediate' }
-          ]);
+          console.log("No languages found");
+          // If no languages found, don't set default languages
+          setLanguages([]);
         }
         
         // Fetch certifications
@@ -97,20 +93,11 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           
         if (certificationsData && certificationsData.length > 0) {
           console.log("Fetched certifications:", certificationsData);
-          // Use type assertion with any as an intermediate step
-          setCertifications(certificationsData as UserCertification[]);
+          setCertifications(certificationsData as unknown as UserCertification[]);
         } else {
-          console.log("No certifications found, using defaults");
-          // Default sample certifications if none are found
-          setCertifications([
-            { 
-              id: '1', 
-              user_id: profile.id as string, 
-              name: 'Professional Certification Example', 
-              issuer: 'Certification Authority',
-              date: '2023'
-            }
-          ]);
+          console.log("No certifications found");
+          // If no certifications found, don't set default certifications
+          setCertifications([]);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -178,7 +165,7 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
             }) : (
               <div className="text-center text-muted-foreground py-4">
                 <p>No skills added yet</p>
-                <p className="text-sm">Upload a CV and extract data to add skills</p>
+                <p className="text-sm">Use "Enhance Profile" to add skills from your CV</p>
               </div>
             )}
           </div>
@@ -192,16 +179,23 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
             <CardDescription>Communication skills</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              {languages.map((language, index) => (
-                <li key={language.id || index} className="flex justify-between items-center">
-                  <span>{language.language}</span>
-                  <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
-                    {language.level}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {languages.length > 0 ? (
+              <ul className="space-y-2">
+                {languages.map((language, index) => (
+                  <li key={language.id || index} className="flex justify-between items-center">
+                    <span>{language.language}</span>
+                    <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
+                      {language.level}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center text-muted-foreground py-4">
+                <p>No languages added yet</p>
+                <p className="text-sm">Use "Enhance Profile" to add languages from your CV</p>
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -211,16 +205,23 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
             <CardDescription>Professional achievements</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              {certifications.map((cert, index) => (
-                <li key={cert.id || index} className="border-l-2 border-primary/20 pl-3">
-                  <div className="font-medium">{cert.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {cert.issuer} · {cert.date}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {certifications.length > 0 ? (
+              <ul className="space-y-3">
+                {certifications.map((cert, index) => (
+                  <li key={cert.id || index} className="border-l-2 border-primary/20 pl-3">
+                    <div className="font-medium">{cert.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {cert.issuer} · {cert.date}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center text-muted-foreground py-4">
+                <p>No certifications added yet</p>
+                <p className="text-sm">Use "Enhance Profile" to add certifications from your CV</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

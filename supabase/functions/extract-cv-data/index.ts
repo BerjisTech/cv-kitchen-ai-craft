@@ -24,8 +24,8 @@ serve(async (req) => {
     }
 
     // Get Supabase credentials from environment
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
       return new Response(
@@ -48,6 +48,7 @@ serve(async (req) => {
     
     if (!documentResponse.ok) {
       const errorText = await documentResponse.text();
+      console.error("Failed to retrieve document:", errorText);
       return new Response(
         JSON.stringify({ error: `Failed to retrieve document: ${errorText}` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -64,10 +65,14 @@ serve(async (req) => {
     }
     
     const document = documents[0];
+    console.log("Found document:", document);
     
     // Get a signed URL to download the document
+    let signedURLRequest = `${supabaseUrl}/storage/v1/object/sign/career-uploads/${document.filepath}`;
+    console.log("Generating signed URL from:", signedURLRequest);
+    
     const storageResponse = await fetch(
-      `${supabaseUrl}/storage/v1/object/sign/career-uploads/${document.filepath}`,
+      signedURLRequest,
       {
         method: 'POST',
         headers: {
@@ -81,6 +86,7 @@ serve(async (req) => {
     
     if (!storageResponse.ok) {
       const errorText = await storageResponse.text();
+      console.error("Failed to get document download URL:", errorText);
       return new Response(
         JSON.stringify({ error: `Failed to get document download URL: ${errorText}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,19 +99,23 @@ serve(async (req) => {
     // Make sure URL is absolute
     const fullSignedUrl = signedURL.startsWith('http') 
       ? signedURL 
-      : new URL(signedURL, supabaseUrl).toString();
+      : `${supabaseUrl}${signedURL.startsWith('/') ? '' : '/'}${signedURL}`;
+    
+    console.log("Using full signed URL:", fullSignedUrl);
     
     // Download the document content
     const fileResponse = await fetch(fullSignedUrl);
     if (!fileResponse.ok) {
+      console.error("Failed to download document content, status:", fileResponse.status);
       return new Response(
-        JSON.stringify({ error: 'Failed to download document content' }),
+        JSON.stringify({ error: `Failed to download document content: ${fileResponse.statusText}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
     // Get file content as text or blob depending on the file type
-    const fileContent = document.file_type.includes('pdf') 
+    console.log("Document file type:", document.file_type);
+    const fileContent = document.file_type?.includes('pdf') 
       ? await fileResponse.blob()
       : await fileResponse.text();
     
@@ -123,17 +133,17 @@ serve(async (req) => {
     
     // For PDFs, we'd need additional processing (potentially through a PDF parsing library)
     // For now, we'll handle text content (like plain text or assuming we've extracted text from a PDF)
-    const textContent = document.file_type.includes('pdf')
+    const textContent = document.file_type?.includes('pdf')
       ? `[This is a PDF file named ${document.filename}]` // In a real implementation, we'd extract text from the PDF
       : fileContent;
     
     // Create a prompt for OpenAI to extract structured data from the CV text
     const prompt = `
-      Extract structured data from this CV/resume:
+      Extract detailed structured data from this CV/resume:
       
-      ${textContent.substring(0, 15000)} ${textContent.length > 15000 ? '... [truncated]' : ''}
+      ${typeof textContent === 'string' ? textContent.substring(0, 15000) : ''} ${typeof textContent === 'string' && textContent.length > 15000 ? '... [truncated]' : ''}
       
-      Return a JSON object with the following structure:
+      Return a complete JSON object with the following structure:
       {
         "fullName": "person's full name",
         "title": "professional title/role",
@@ -145,7 +155,7 @@ serve(async (req) => {
           "linkedin": "LinkedIn profile URL",
           "github": "GitHub profile URL"
         },
-        "summary": "professional summary or objective",
+        "summary": "professional summary or objective (detailed)",
         "skills": ["skill1", "skill2", ...],
         "experience": [
           {
@@ -184,6 +194,7 @@ serve(async (req) => {
         ]
       }
       
+      Be extremely thorough and extract as much detail as possible. The skills, languages, experience, and education fields should be comprehensive lists.
       If any field can't be determined from the CV, use null or an empty array as appropriate. Ensure the output is valid JSON.
     `;
     

@@ -2,24 +2,58 @@ import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, MapPin, Calendar, Edit, ExternalLink } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, ExternalLink, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getProfile, ProfileData } from '@/services/profileService';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
+import { enhanceUserProfile } from '@/services/cvDataExtractorService';
+
+interface UserSkill {
+  id: string;
+  name: string;
+  level?: number;
+}
 
 const Profile = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enhancing, setEnhancing] = useState(false);
+  const [skills, setSkills] = useState<UserSkill[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
     const fetchProfile = async () => {
       const data = await getProfile();
       setProfile(data);
+      if (data?.id) {
+        await fetchSkills(data.id);
+      }
       setLoading(false);
+    };
+    
+    const fetchSkills = async (userId: string) => {
+      try {
+        const { data: skillsData, error: skillsError } = await supabase
+          .from('user_skills')
+          .select('*')
+          .eq('user_id', userId);
+          
+        if (skillsError) {
+          console.error("Error fetching skills:", skillsError);
+          return;
+        }
+          
+        if (skillsData && skillsData.length > 0) {
+          setSkills(skillsData as UserSkill[]);
+        }
+      } catch (error) {
+        console.error("Error fetching skills:", error);
+      }
     };
     
     fetchProfile();
@@ -39,6 +73,32 @@ const Profile = () => {
     return nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : nameParts[0].substring(0, 2);
+  };
+  
+  const handleEnhanceProfile = async () => {
+    setEnhancing(true);
+    toast.info('Enhancing your profile with all available data...');
+    
+    try {
+      const success = await enhanceUserProfile();
+      
+      if (success) {
+        toast.success('Profile enhanced successfully!');
+        
+        // Reload the page to show the updated profile data
+        toast.info('Reloading page to show your enhanced profile...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast.error('Failed to enhance profile');
+      }
+    } catch (error) {
+      console.error('Error enhancing profile:', error);
+      toast.error('Failed to enhance profile');
+    } finally {
+      setEnhancing(false);
+    }
   };
 
   if (loading) {
@@ -85,7 +145,19 @@ const Profile = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">My Profile</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">My Profile</h1>
+          <Button 
+            size="sm"
+            variant="default"
+            className="gap-2"
+            onClick={handleEnhanceProfile}
+            disabled={enhancing}
+          >
+            <Sparkles size={16} className={enhancing ? 'animate-pulse' : ''} />
+            Enhance Profile
+          </Button>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="glass-card lg:col-span-1">
@@ -144,17 +216,21 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm whitespace-pre-wrap">
-                {profile?.bio || 'No bio available. Add your professional summary in the settings page.'}
+                {profile?.bio || 'No bio available. Enhance your profile or add your professional summary in the settings page.'}
               </p>
               
               <div>
                 <h4 className="text-sm font-medium mb-2">Skills</h4>
                 <div className="flex flex-wrap gap-2">
-                  {['React', 'TypeScript', 'Node.js', 'UI/UX', 'REST APIs', 'GraphQL', 'AWS', 'CI/CD'].map((skill) => (
-                    <span key={skill} className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full">
-                      {skill}
-                    </span>
-                  ))}
+                  {skills.length > 0 ? (
+                    skills.map((skill) => (
+                      <span key={skill.id} className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                        {skill.name}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No skills added yet. Click "Enhance Profile" to extract skills from your CV.</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -169,43 +245,30 @@ const Profile = () => {
           </Card>
           
           <Card className="glass-card lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Experience</CardTitle>
-              <CardDescription>Work history and education</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Experience</CardTitle>
+                <CardDescription>Work history and education</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/settings">
+                  <Edit size={16} className="mr-2" />
+                  Manage
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Work History</h4>
                 
-                <div className="border-l-2 border-primary/20 pl-4 space-y-6">
-                  <div>
-                    <div className="flex justify-between">
-                      <h5 className="font-medium">Senior Frontend Developer</h5>
-                      <span className="text-xs text-muted-foreground">2021 - Present</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">TechCorp Inc.</p>
-                    <p className="text-sm mt-2">Led the frontend team in developing a modern React application with TypeScript and Tailwind CSS.</p>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between">
-                      <h5 className="font-medium">Frontend Developer</h5>
-                      <span className="text-xs text-muted-foreground">2018 - 2021</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">WebSolutions LLC</p>
-                    <p className="text-sm mt-2">Developed and maintained multiple web applications using React and related technologies.</p>
-                  </div>
+                <div id="work-history-container" className="border-l-2 border-primary/20 pl-4 space-y-6">
+                  {/* This will be populated dynamically after profile enhancement */}
+                  <p className="text-sm text-muted-foreground">
+                    No work history found. Click "Enhance Profile" to extract experience from your CV.
+                  </p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full gap-2" asChild>
-                <Link to="/settings?tab=account">
-                  <Edit size={16} />
-                  Edit Experience
-                </Link>
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </div>

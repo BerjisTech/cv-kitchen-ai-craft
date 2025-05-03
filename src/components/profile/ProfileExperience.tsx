@@ -56,22 +56,11 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
           
         if (experienceData && experienceData.length > 0) {
           console.log("Fetched experience data:", experienceData);
-          setWorkExperience(experienceData as UserExperience[]);
+          setWorkExperience(experienceData as unknown as UserExperience[]);
         } else {
-          console.log("No experience data found, using default");
-          // Default sample experience if none is found
-          setWorkExperience([
-            {
-              id: '1',
-              user_id: profile.id as string,
-              company: 'Example Company',
-              role: 'Professional Role',
-              start_date: '2021-01',
-              end_date: null,
-              description: 'Upload your CV and extract data to update your work history.',
-              source: 'default'
-            }
-          ]);
+          console.log("No experience data found");
+          // Don't set default data if none is found
+          setWorkExperience([]);
         }
         
         // Fetch education
@@ -87,22 +76,11 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
           
         if (educationData && educationData.length > 0) {
           console.log("Fetched education data:", educationData);
-          setEducation(educationData as UserEducation[]);
+          setEducation(educationData as unknown as UserEducation[]);
         } else {
-          console.log("No education data found, using default");
-          // Default sample education if none is found
-          setEducation([
-            {
-              id: '1',
-              user_id: profile.id as string,
-              institution: 'Example University',
-              degree: 'Degree Program',
-              start_year: '2014',
-              end_year: '2018',
-              description: 'Upload your CV and extract data to update your education history.',
-              source: 'default'
-            }
-          ]);
+          console.log("No education data found");
+          // Don't set default data if none is found
+          setEducation([]);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -172,28 +150,24 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {workExperience.map((job) => (
-              <div key={job.id} className="border-l-2 border-primary/20 pl-4 relative">
-                <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px] top-1"></div>
-                <h3 className="font-medium">{job.role}</h3>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">{job.company}</p>
-                  <span className="text-xs text-muted-foreground">
-                    {formatPeriod(job.start_date, job.end_date)}
-                  </span>
+            {workExperience.length > 0 ? (
+              workExperience.map((job) => (
+                <div key={job.id} className="border-l-2 border-primary/20 pl-4 relative">
+                  <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px] top-1"></div>
+                  <h3 className="font-medium">{job.role}</h3>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">{job.company}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {formatPeriod(job.start_date, job.end_date)}
+                    </span>
+                  </div>
+                  <p className="text-sm mt-2">{job.description}</p>
                 </div>
-                <p className="text-sm mt-2">{job.description}</p>
-                {job.source === 'default' && (
-                  <p className="text-xs text-muted-foreground mt-1 italic">
-                    This is example data. Upload your CV to see your real experience.
-                  </p>
-                )}
-              </div>
-            ))}
-            {workExperience.length === 0 && (
+              ))
+            ) : (
               <div className="text-center text-muted-foreground py-4">
                 <p>No work experience found</p>
-                <p className="text-sm">Upload a CV and extract data to add your work history</p>
+                <p className="text-sm">Use "Enhance Profile" to add your work history</p>
               </div>
             )}
           </div>
@@ -212,28 +186,24 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {education.map((edu) => (
-              <div key={edu.id} className="border-l-2 border-primary/20 pl-4 relative">
-                <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px] top-1"></div>
-                <h3 className="font-medium">{edu.degree}</h3>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">{edu.institution}</p>
-                  <span className="text-xs text-muted-foreground">
-                    {formatPeriod(edu.start_year, edu.end_year)}
-                  </span>
+            {education.length > 0 ? (
+              education.map((edu) => (
+                <div key={edu.id} className="border-l-2 border-primary/20 pl-4 relative">
+                  <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px] top-1"></div>
+                  <h3 className="font-medium">{edu.degree}</h3>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">{edu.institution}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {formatPeriod(edu.start_year, edu.end_year)}
+                    </span>
+                  </div>
+                  {edu.description && <p className="text-sm mt-2">{edu.description}</p>}
                 </div>
-                {edu.description && <p className="text-sm mt-2">{edu.description}</p>}
-                {edu.source === 'default' && (
-                  <p className="text-xs text-muted-foreground mt-1 italic">
-                    This is example data. Upload your CV to see your real education.
-                  </p>
-                )}
-              </div>
-            ))}
-            {education.length === 0 && (
+              ))
+            ) : (
               <div className="text-center text-muted-foreground py-4">
                 <p>No education history found</p>
-                <p className="text-sm">Upload a CV and extract data to add your education</p>
+                <p className="text-sm">Use "Enhance Profile" to add your education</p>
               </div>
             )}
           </div>
