@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -191,7 +190,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
 
     // 1. Update basic profile information
     if (cvData.fullName || cvData.title || cvData.summary || cvData.contact) {
-      const profileUpdatePromise = supabase
+      const profileUpdateOperation = supabase
         .from('profiles')
         .update({
           full_name: cvData.fullName || undefined,
@@ -201,8 +200,11 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           website: cvData.contact?.website || undefined,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
-        .then(response => Promise.resolve(response));
+        .eq('id', user.id);
+      
+      const profileUpdatePromise = new Promise((resolve) => {
+        profileUpdateOperation.then(response => resolve(response));
+      });
       
       updates.push(profileUpdatePromise);
     }
@@ -233,10 +235,13 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           level: Math.floor(Math.random() * 31) + 70
         }));
         
-        const skillsUpdatePromise = supabase
+        const skillsUpdateOperation = supabase
           .from('user_skills')
-          .insert(skillsData)
-          .then(response => Promise.resolve(response));
+          .insert(skillsData);
+        
+        const skillsUpdatePromise = new Promise((resolve) => {
+          skillsUpdateOperation.then(response => resolve(response));
+        });
         
         updates.push(skillsUpdatePromise);
       }
@@ -277,10 +282,13 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!experienceExists(experienceEntry)) {
-          const experienceUpdatePromise = supabase
+          const experienceUpdateOperation = supabase
             .from('user_experience')
-            .insert([experienceEntry])
-            .then(response => Promise.resolve(response));
+            .insert([experienceEntry]);
+          
+          const experienceUpdatePromise = new Promise((resolve) => {
+            experienceUpdateOperation.then(response => resolve(response));
+          });
           
           updates.push(experienceUpdatePromise);
         }
@@ -321,10 +329,13 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!educationExists(educationEntry)) {
-          const educationUpdatePromise = supabase
+          const educationUpdateOperation = supabase
             .from('user_education')
-            .insert([educationEntry])
-            .then(response => Promise.resolve(response));
+            .insert([educationEntry]);
+          
+          const educationUpdatePromise = new Promise((resolve) => {
+            educationUpdateOperation.then(response => resolve(response));
+          });
           
           updates.push(educationUpdatePromise);
         }
@@ -355,10 +366,13 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           level: lang.proficiency || 'Intermediate'
         }));
         
-        const languagesUpdatePromise = supabase
+        const languagesUpdateOperation = supabase
           .from('user_languages')
-          .insert(languagesData)
-          .then(response => Promise.resolve(response));
+          .insert(languagesData);
+        
+        const languagesUpdatePromise = new Promise((resolve) => {
+          languagesUpdateOperation.then(response => resolve(response));
+        });
         
         updates.push(languagesUpdatePromise);
       }
@@ -395,10 +409,13 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!certificationExists(certEntry)) {
-          const certUpdatePromise = supabase
+          const certUpdateOperation = supabase
             .from('user_certifications')
-            .insert([certEntry])
-            .then(response => Promise.resolve(response));
+            .insert([certEntry]);
+          
+          const certUpdatePromise = new Promise((resolve) => {
+            certUpdateOperation.then(response => resolve(response));
+          });
           
           updates.push(certUpdatePromise);
         }
