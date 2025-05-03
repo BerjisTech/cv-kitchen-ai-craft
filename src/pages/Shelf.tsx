@@ -10,13 +10,14 @@ import { ResumesSection } from '@/components/shelf/ResumesSection';
 import { CoverLettersSection } from '@/components/shelf/CoverLettersSection';
 import { TemplatesSection } from '@/components/shelf/TemplatesSection';
 import { useFormatDate } from '@/hooks/useFormatDate';
-import { Eye, Edit, Download } from 'lucide-react';
+import { getUserCoverLetters, CoverLetter } from '@/services/coverLetterService';
 
 const Shelf = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [resumes, setResumes] = useState<TailoredCV[]>([]);
-  const [coverLetters, setCoverLetters] = useState<any[]>([]);
+  const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCoverLetters, setIsLoadingCoverLetters] = useState(true);
   const navigate = useNavigate();
   const { formatDate } = useFormatDate();
   
@@ -55,6 +56,8 @@ const Shelf = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       setIsLoading(true);
+      setIsLoadingCoverLetters(true);
+      
       try {
         // Fetch tailored CVs
         const { data: cvData, error: cvError } = await supabase
@@ -69,9 +72,16 @@ const Shelf = () => {
           setResumes(cvData || []);
         }
         
-        // In a real app, fetch cover letters as well
-        // For now, we'll use an empty array as cover letters aren't implemented yet
-        setCoverLetters([]);
+        // Fetch cover letters
+        try {
+          const coverLetterData = await getUserCoverLetters();
+          setCoverLetters(coverLetterData);
+        } catch (error) {
+          console.error('Error fetching cover letters:', error);
+          toast.error('Failed to load your cover letters');
+        } finally {
+          setIsLoadingCoverLetters(false);
+        }
         
       } catch (error) {
         console.error('Error fetching shelf data:', error);
@@ -88,8 +98,16 @@ const Shelf = () => {
     navigate('/kitchen');
   };
   
+  const handleCreateCoverLetter = () => {
+    navigate('/cover-letter/new');
+  };
+  
   const handleViewCV = (cvId: string) => {
     navigate(`/kitchen/cv-viewer/${cvId}`);
+  };
+  
+  const handleViewCoverLetter = (id: string) => {
+    navigate(`/cover-letter/${id}`);
   };
 
   const handleUseTemplate = (template: string) => {
@@ -122,8 +140,9 @@ const Shelf = () => {
         {/* Cover Letters Section */}
         <CoverLettersSection 
           coverLetters={coverLetters}
-          isLoading={isLoading}
-          handleCreateNew={handleCreateNew}
+          isLoading={isLoadingCoverLetters}
+          handleCreateNew={handleCreateCoverLetter}
+          handleViewCoverLetter={handleViewCoverLetter}
         />
         
         {/* Templates Section */}

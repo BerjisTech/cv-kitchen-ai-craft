@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cover_letters: {
+        Row: {
+          company: string | null
+          content: string
+          created_at: string
+          id: string
+          last_updated: string | null
+          position: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          last_updated?: string | null
+          position?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          last_updated?: string | null
+          position?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cv_extracted_data: {
         Row: {
           created_at: string

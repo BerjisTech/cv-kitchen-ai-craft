@@ -6,15 +6,14 @@ export interface CoverLetter {
   id: string;
   title: string;
   content: string;
-  position: string;
-  company: string;
+  position: string | null;
+  company: string | null;
   user_id: string;
   created_at: string;
   updated_at: string;
-  last_updated?: string;
+  last_updated?: string | null;
 }
 
-// This is a placeholder function that returns empty array until cover_letters table is created
 export async function getUserCoverLetters(): Promise<CoverLetter[]> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -24,12 +23,18 @@ export async function getUserCoverLetters(): Promise<CoverLetter[]> {
       return [];
     }
     
-    // Placeholder until cover_letters table is created
-    // In a real implementation, this would query the cover_letters table
-    console.log("Note: cover_letters table does not exist yet. Returning empty array.");
+    const { data, error } = await supabase
+      .from('cover_letters')
+      .select('*')
+      .order('updated_at', { ascending: false });
+      
+    if (error) {
+      console.error("Error fetching cover letters:", error);
+      toast.error("Failed to load cover letters");
+      return [];
+    }
     
-    // Return empty array as placeholder
-    return [];
+    return data as CoverLetter[];
   } catch (error) {
     console.error("Error in getUserCoverLetters:", error);
     toast.error("Failed to load cover letters");
@@ -46,16 +51,95 @@ export async function createCoverLetter(coverLetterData: Partial<CoverLetter>): 
       return null;
     }
     
-    // Placeholder until cover_letters table is created
-    // In a real implementation, this would insert into the cover_letters table
-    console.log("Note: cover_letters table does not exist yet. Can't create cover letter.");
-    toast.warning("Cover letter creation is not implemented yet.");
+    const newCoverLetter = {
+      ...coverLetterData,
+      user_id: user.id,
+      last_updated: new Date().toISOString()
+    };
     
-    // Return null since we can't actually create one yet
-    return null;
+    const { data, error } = await supabase
+      .from('cover_letters')
+      .insert(newCoverLetter)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Error creating cover letter:", error);
+      toast.error("Failed to create cover letter");
+      return null;
+    }
+    
+    toast.success("Cover letter created successfully");
+    return data as CoverLetter;
   } catch (error) {
     console.error("Error in createCoverLetter:", error);
     toast.error("Failed to create cover letter");
     return null;
+  }
+}
+
+export async function updateCoverLetter(id: string, coverLetterData: Partial<CoverLetter>): Promise<CoverLetter | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to update a cover letter");
+      return null;
+    }
+    
+    const updates = {
+      ...coverLetterData,
+      updated_at: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from('cover_letters')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Error updating cover letter:", error);
+      toast.error("Failed to update cover letter");
+      return null;
+    }
+    
+    toast.success("Cover letter updated successfully");
+    return data as CoverLetter;
+  } catch (error) {
+    console.error("Error in updateCoverLetter:", error);
+    toast.error("Failed to update cover letter");
+    return null;
+  }
+}
+
+export async function deleteCoverLetter(id: string): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to delete a cover letter");
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('cover_letters')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error("Error deleting cover letter:", error);
+      toast.error("Failed to delete cover letter");
+      return false;
+    }
+    
+    toast.success("Cover letter deleted successfully");
+    return true;
+  } catch (error) {
+    console.error("Error in deleteCoverLetter:", error);
+    toast.error("Failed to delete cover letter");
+    return false;
   }
 }

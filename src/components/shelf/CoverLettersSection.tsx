@@ -1,18 +1,21 @@
 
 import React from 'react';
-import { FileText, Eye, Edit, Download } from 'lucide-react';
+import { FileText, Eye, Edit, Download, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CoverLetter } from '@/services/coverLetterService';
 
 interface CoverLettersSectionProps {
-  coverLetters: any[];
+  coverLetters: CoverLetter[];
   isLoading: boolean;
   handleCreateNew: () => void;
+  handleViewCoverLetter?: (id: string) => void;
 }
 
 export const CoverLettersSection: React.FC<CoverLettersSectionProps> = ({
   coverLetters,
   isLoading,
-  handleCreateNew
+  handleCreateNew,
+  handleViewCoverLetter
 }) => {
   return (
     <div>
@@ -31,25 +34,48 @@ export const CoverLettersSection: React.FC<CoverLettersSectionProps> = ({
         </div>
       ) : coverLetters.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {coverLetters.map((letter, index) => (
-            <div key={index} className="glass-card overflow-hidden" style={{ backgroundColor: 'rgba(236, 253, 243, 0.4)' }}>
+          {coverLetters.map((letter) => (
+            <div 
+              key={letter.id} 
+              className="glass-card overflow-hidden cursor-pointer"
+              onClick={() => handleViewCoverLetter && handleViewCoverLetter(letter.id)}
+              style={{ backgroundColor: 'rgba(236, 253, 243, 0.4)' }}
+            >
               <div className="aspect-[3/4] flex items-center justify-center bg-green-50/80">
                 <FileText size={64} className="text-green-400" />
               </div>
               <div className="p-4">
                 <h3 className="font-semibold">{letter.title}</h3>
-                <p className="text-sm text-muted-foreground">{letter.position}</p>
+                <p className="text-sm text-muted-foreground">
+                  {letter.position || 'No position specified'}
+                  {letter.company && ` at ${letter.company}`}
+                </p>
               </div>
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                <p className="text-xs text-muted-foreground">{letter.lastUpdated}</p>
+                <p className="text-xs text-muted-foreground">
+                  {letter.last_updated ? new Date(letter.last_updated).toLocaleDateString() : 
+                   new Date(letter.updated_at).toLocaleDateString()}
+                </p>
                 <div className="flex items-center gap-2">
-                  <button className="text-gray-500 hover:text-gray-700">
+                  <button 
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewCoverLetter && handleViewCoverLetter(letter.id);
+                    }}
+                  >
                     <Eye size={16} />
                   </button>
-                  <button className="text-gray-500 hover:text-gray-700">
+                  <button 
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Edit size={16} />
                   </button>
-                  <button className="text-gray-500 hover:text-gray-700">
+                  <button 
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Download size={16} />
                   </button>
                 </div>
@@ -64,8 +90,9 @@ export const CoverLettersSection: React.FC<CoverLettersSectionProps> = ({
           <p className="text-muted-foreground mb-4">Create your first cover letter</p>
           <Button 
             onClick={handleCreateNew} 
-            className="bg-green-500 hover:bg-green-600"
+            className="bg-green-500 hover:bg-green-600 gap-2"
           >
+            <Plus size={16} />
             Create Cover Letter
           </Button>
         </div>
@@ -73,4 +100,3 @@ export const CoverLettersSection: React.FC<CoverLettersSectionProps> = ({
     </div>
   );
 };
-
