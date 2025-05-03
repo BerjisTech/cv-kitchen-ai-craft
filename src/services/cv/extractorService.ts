@@ -14,7 +14,21 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       return null;
     }
 
+    // First check if we already have extracted data for this document
+    const { data: existingData } = await supabase
+      .from('cv_extracted_data')
+      .select('extracted_data')
+      .eq('document_id', documentId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (existingData?.extracted_data) {
+      console.log(`Using cached extracted data for document ${documentId}`);
+      return existingData.extracted_data as ExtractedCVData;
+    }
+
     console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
+    toast.info("Extracting data from CV...", { duration: 2000 });
     
     // Call the Edge Function to extract data from the CV
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
@@ -27,6 +41,17 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     }
 
     console.log("Extracted CV data:", data);
+    
+    // Store the extracted data in the database for future use
+    await supabase.from('cv_extracted_data').insert({
+      document_id: documentId,
+      user_id: user.id,
+      extracted_data: data
+    }).catch(err => {
+      // Log but don't throw - we still want to return the data even if storing fails
+      console.error("Error storing extracted CV data:", err);
+    });
+    
     return data;
   } catch (error) {
     console.error('Error in extractCVData:', error);

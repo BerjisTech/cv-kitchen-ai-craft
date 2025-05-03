@@ -2,111 +2,53 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Get all CV context data for job analysis
+ * Gets the context for all CV documents for the current user
  */
-export const getAllCVContext = async (): Promise<string> => {
+export const getAllCVContext = async (): Promise<string[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log("User not authenticated, cannot get CV context");
-      return "";
+      return [];
     }
 
-    let contextData = "";
-
-    // 1. Get basic profile info
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Fetch both CV documents and LinkedIn data if available
+    const [documentsResult, linkedInResult] = await Promise.all([
+      supabase
+        .from('user_documents')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('document_type', 'cv'),
+      supabase
+        .from('linkedin_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+        .then(result => result.data ? [result.data] : [])
+        .catch(() => [])
+    ]);
     
-    if (profileData) {
-      contextData += `Name: ${profileData.full_name || 'Not specified'}\n`;
-      contextData += `Role: ${profileData.role || 'Not specified'}\n`;
-      contextData += `Bio: ${profileData.bio || 'Not specified'}\n\n`;
+    if (!documentsResult.data || documentsResult.error) {
+      console.error("Error fetching CV documents:", documentsResult.error);
+      return [];
     }
-
-    // 2. Get skills
-    const { data: skills } = await supabase
-      .from('user_skills')
-      .select('*')
-      .eq('user_id', user.id);
     
-    if (skills && skills.length > 0) {
-      contextData += "Skills:\n";
-      skills.forEach((skill) => {
-        contextData += `- ${skill.name}\n`;
-      });
-      contextData += "\n";
-    }
-
-    // 3. Get work experience
-    const { data: experiences } = await supabase
-      .from('user_experience')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('start_date', { ascending: false });
+    // Get the document contents
+    const documents = documentsResult.data;
+    const contexts: string[] = [];
     
-    if (experiences && experiences.length > 0) {
-      contextData += "Work Experience:\n";
-      experiences.forEach((exp) => {
-        contextData += `- ${exp.role} at ${exp.company} (${exp.start_date || ''} to ${exp.end_date || 'Present'})\n`;
-        if (exp.description) {
-          contextData += `  ${exp.description}\n`;
-        }
-      });
-      contextData += "\n";
+    for (const doc of documents) {
+      // Add document context
+      contexts.push(`CV Document: ${doc.filename}`);
     }
-
-    // 4. Get education
-    const { data: education } = await supabase
-      .from('user_education')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('start_year', { ascending: false });
     
-    if (education && education.length > 0) {
-      contextData += "Education:\n";
-      education.forEach((edu) => {
-        contextData += `- ${edu.degree} from ${edu.institution} (${edu.start_year || ''} to ${edu.end_year || 'Present'})\n`;
-        if (edu.description) {
-          contextData += `  ${edu.description}\n`;
-        }
-      });
-      contextData += "\n";
+    // Add LinkedIn context if available
+    if (linkedInResult && linkedInResult.length > 0) {
+      contexts.push('LinkedIn Profile Data Available');
     }
-
-    // 5. Get languages
-    const { data: languages } = await supabase
-      .from('user_languages')
-      .select('*')
-      .eq('user_id', user.id);
     
-    if (languages && languages.length > 0) {
-      contextData += "Languages:\n";
-      languages.forEach((lang) => {
-        contextData += `- ${lang.language}: ${lang.level}\n`;
-      });
-      contextData += "\n";
-    }
-
-    // 6. Get certifications
-    const { data: certifications } = await supabase
-      .from('user_certifications')
-      .select('*')
-      .eq('user_id', user.id);
-    
-    if (certifications && certifications.length > 0) {
-      contextData += "Certifications:\n";
-      certifications.forEach((cert) => {
-        contextData += `- ${cert.name} from ${cert.issuer || 'N/A'} (${cert.date || 'N/A'})\n`;
-      });
-    }
-
-    return contextData;
+    return contexts;
   } catch (error) {
-    console.error('Error in getAllCVContext:', error);
-    return "";
+    console.error('Error getting CV context:', error);
+    return [];
   }
 };
