@@ -50,7 +50,7 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
     });
     
     if (error) {
-      console.error('Error generating CV:', error);
+      console.error('Error in generateTailoredCV:', error);
       toast.error('Failed to generate CV. Please try again.');
       throw error;
     }
@@ -87,7 +87,7 @@ export const getTailoredCV = async (cvId: string): Promise<TailoredCV | null> =>
       .from('tailored_cvs')
       .select('*')
       .eq('id', cvId)
-      .maybeSingle();  // Use maybeSingle instead of single to avoid errors if no row is found
+      .maybeSingle();
       
     if (error) {
       console.error('Error getting tailored CV:', error);
