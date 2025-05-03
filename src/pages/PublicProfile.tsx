@@ -1,76 +1,74 @@
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProfileData, getProfileByUsername } from '@/services/profileService';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileAbout } from '@/components/profile/ProfileAbout';
+import { ProfileContact } from '@/components/profile/ProfileContact';
 import { ProfilePortfolio } from '@/components/profile/ProfilePortfolio';
 import { ProfileExperience } from '@/components/profile/ProfileExperience';
 import { ProfileSkills } from '@/components/profile/ProfileSkills';
-import { ProfileContact } from '@/components/profile/ProfileContact';
-import { getProfileByUsername, ProfileData } from '@/services/profileService';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/context/AuthContext';
 
 const PublicProfile = () => {
-  const { username } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setLoading(true);
-      
-      // If no username is provided, redirect to 404 or handle differently
       if (!username) {
-        // Check if this is from the legacy /public-profile route
-        // In that case, redirect to the current user's profile
-        if (user) {
-          const userData = await getProfileByUsername(user.user_metadata?.username || '');
-          if (userData?.username) {
-            navigate(`/u/${userData.username}`, { replace: true });
-            return;
-          }
+        setError("Username not provided");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const profileData = await getProfileByUsername(username);
+        if (profileData) {
+          setProfile(profileData);
+        } else {
+          setError("User not found");
         }
-        
-        navigate('/404', { replace: true });
-        return;
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setError("Error loading profile");
+      } finally {
+        setLoading(false);
       }
-      
-      // Fetch profile data by username
-      const profileData = await getProfileByUsername(username);
-      
-      if (!profileData) {
-        // Profile not found, redirect to 404
-        navigate('/404', { replace: true });
-        return;
-      }
-      
-      setProfile(profileData);
-      setLoading(false);
     };
-    
+
     fetchProfile();
-  }, [username, user, navigate]);
+  }, [username]);
 
   if (loading) {
     return (
       <MainLayout>
         <div className="space-y-6">
-          <Skeleton className="h-36 w-full" />
-          <div className="flex gap-4">
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-8 w-16" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-24 h-24 rounded-full" />
+            <div>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-4 w-36" />
+            </div>
           </div>
-          <div className="space-y-4">
-            <Skeleton className="h-36 w-full" />
-            <Skeleton className="h-36 w-full" />
-          </div>
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <MainLayout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold mb-4">{error || "User not found"}</h1>
+          <p className="text-muted-foreground">
+            The profile you're looking for doesn't seem to exist.
+          </p>
         </div>
       </MainLayout>
     );
@@ -78,38 +76,24 @@ const PublicProfile = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <ProfileHeader profile={profile} />
+      <div className="space-y-8">
+        <ProfileHeader profile={profile} isPublic={true} />
         
-        <Tabs defaultValue="about" className="w-full">
-          <TabsList className="glass mb-6">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-            <TabsTrigger value="experience">Experience</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="contact">Contact</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="about">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
             <ProfileAbout profile={profile} />
-          </TabsContent>
+            <div className="mt-6">
+              <ProfileExperience />
+            </div>
+          </div>
           
-          <TabsContent value="portfolio">
-            <ProfilePortfolio profile={profile} />
-          </TabsContent>
-          
-          <TabsContent value="experience">
-            <ProfileExperience profile={profile} />
-          </TabsContent>
-          
-          <TabsContent value="skills">
-            <ProfileSkills profile={profile} />
-          </TabsContent>
-          
-          <TabsContent value="contact">
+          <div className="space-y-6">
             <ProfileContact profile={profile} />
-          </TabsContent>
-        </Tabs>
+            <ProfileSkills />
+          </div>
+        </div>
+        
+        <ProfilePortfolio profile={profile} />
       </div>
     </MainLayout>
   );

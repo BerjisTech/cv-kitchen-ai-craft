@@ -16,9 +16,20 @@ import Analytics from './pages/Analytics';
 import { CVViewer } from './components/kitchen/CVViewer';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
+import PublicProfile from './pages/PublicProfile';
 import { Skeleton } from './components/ui/skeleton';
 
-const queryClient = new QueryClient();
+// Create a client with default options
+// This avoids re-fetching when navigating between pages
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60000, // 1 minute
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -59,6 +70,7 @@ const App = () => {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/u/:username" element={<PublicProfile />} />
                 
                 <Route element={<ProtectedRoute />}>
                   <Route path="/dashboard" element={<Dashboard />} />

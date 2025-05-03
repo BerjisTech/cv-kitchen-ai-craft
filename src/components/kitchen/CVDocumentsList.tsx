@@ -1,98 +1,122 @@
 
-import React from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { FileText, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Trash2, FileEdit } from 'lucide-react';
-import { UserDocument, getDownloadUrl, deleteDocument } from '@/services/documentService';
+import { Card } from '@/components/ui/card';
+import { UserDocument } from '@/services/documentService';
+import { deleteDocument } from '@/services/documentService';
 import { toast } from '@/components/ui/sonner';
+import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CVDocumentsListProps {
   documents: UserDocument[];
   onDocumentDeleted: (id: string) => void;
   onExtractData: (id: string) => void;
+  isLoading?: boolean;
 }
 
-export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({ 
+export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   documents,
   onDocumentDeleted,
-  onExtractData
+  onExtractData,
+  isLoading = false
 }) => {
-  if (documents.length === 0) return null;
-
-  const handleDownloadCV = async (filepath: string, filename: string) => {
-    const url = await getDownloadUrl(filepath);
-    if (url) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else {
-      toast.error("Failed to generate download link");
+  const [processingDocs, setProcessingDocs] = useState<{ [key: string]: boolean }>({});
+  const [deletingDocs, setDeletingDocs] = useState<{ [key: string]: boolean }>({});
+  
+  const handleDelete = async (id: string) => {
+    setDeletingDocs(prev => ({ ...prev, [id]: true }));
+    try {
+      await deleteDocument(id);
+      onDocumentDeleted(id);
+      toast.success('CV deleted successfully');
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast.error('Failed to delete CV');
+    } finally {
+      setDeletingDocs(prev => ({ ...prev, [id]: false }));
     }
   };
   
-  const handleDeleteCV = async (id: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this document?");
-    if (confirmed) {
-      const success = await deleteDocument(id);
-      if (success) {
-        onDocumentDeleted(id);
-      }
+  const handleExtractData = async (id: string) => {
+    setProcessingDocs(prev => ({ ...prev, [id]: true }));
+    try {
+      await onExtractData(id);
+    } finally {
+      setProcessingDocs(prev => ({ ...prev, [id]: false }));
+    }
+  };
+  
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM d, yyyy');
+    } catch (error) {
+      return 'Unknown date';
     }
   };
 
   return (
     <div>
-      <h3 className="font-medium text-lg mb-3">Your CV Documents</h3>
-      <div className="space-y-4">
-        {documents.map((doc) => (
-          <Card key={doc.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-blue-500" />
+      <h2 className="text-lg font-semibold mb-3">Uploaded CVs</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {isLoading ? (
+          Array(2).fill(0).map((_, index) => (
+            <Card key={index} className="p-4 flex flex-col">
+              <div className="flex items-start gap-3">
+                <Skeleton className="w-12 h-12 rounded-md" />
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Skeleton className="h-9 w-9 rounded" />
+                <Skeleton className="h-9 w-9 rounded" />
+              </div>
+            </Card>
+          ))
+        ) : (
+          documents.map(doc => (
+            <Card key={doc.id} className="p-4 flex flex-col">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-primary/10 text-primary rounded-md">
+                  <FileText size={32} />
                 </div>
                 <div>
-                  <h4 className="font-medium">{doc.filename}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Uploaded: {new Date(doc.created_at).toLocaleDateString()}
+                  <h3 className="font-medium truncate" title={doc.filename}>
+                    {doc.filename}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {doc.file_type} • {doc.file_size ? `${Math.round(doc.file_size / 1024)} KB` : 'Unknown size'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(doc.created_at)}
                   </p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onExtractData(doc.id)}
-                  title="Extract data from CV"
+              <div className="flex justify-end gap-2 mt-4 ml-auto">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleExtractData(doc.id)}
+                  disabled={processingDocs[doc.id]}
                 >
-                  <FileEdit className="h-4 w-4 mr-2" />
-                  Extract Data
+                  <RefreshCw size={18} className={processingDocs[doc.id] ? 'animate-spin' : ''} />
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDownloadCV(doc.filepath, doc.filename)}
-                  title="Download CV"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleDelete(doc.id)}
+                  disabled={deletingDocs[doc.id]}
                 >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-red-500 hover:text-red-700"
-                  onClick={() => handleDeleteCV(doc.id)}
-                  title="Delete CV"
-                >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 size={18} />
                 </Button>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

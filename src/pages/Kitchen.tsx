@@ -23,6 +23,8 @@ const Kitchen = () => {
   const [cvDocuments, setCVDocuments] = useState<UserDocument[]>([]);
   const [socialConnections, setSocialConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCVs, setIsLoadingCVs] = useState(true);
+  const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(true);
   const [recentAnalyses, setRecentAnalyses] = useState<JobAnalysis[]>([]);
   const [selectedAnalysis, setSelectedAnalysis] = useState<JobAnalysis | null>(null);
   const { user } = useAuth();
@@ -31,18 +33,36 @@ const Kitchen = () => {
     const fetchUserData = async () => {
       if (user) {
         setIsLoading(true);
+        setIsLoadingCVs(true);
+        setIsLoadingAnalyses(true);
+        
         try {
           // Get all documents
           const docs = await getUserDocuments();
           const cvDocs = docs.filter(doc => doc.document_type === 'cv');
           
-          const connections = await getUserConnections();
-          const analyses = await getRecentAnalyses();
-          
           setUserDocuments(docs);
           setCVDocuments(cvDocs);
-          setSocialConnections(connections);
-          setRecentAnalyses(analyses);
+          setIsLoadingCVs(false);
+          
+          // Get connections
+          try {
+            const connections = await getUserConnections();
+            setSocialConnections(connections);
+          } catch (error) {
+            console.error("Error fetching user connections:", error);
+          }
+          
+          // Get analyses
+          try {
+            const analyses = await getRecentAnalyses();
+            setRecentAnalyses(analyses);
+            setIsLoadingAnalyses(false);
+          } catch (error) {
+            console.error("Error fetching recent analyses:", error);
+            setIsLoadingAnalyses(false);
+          }
+          
         } catch (error) {
           console.error("Error fetching user data:", error);
           toast.error("Failed to load your data");
@@ -58,10 +78,14 @@ const Kitchen = () => {
   const handleUpload = async (files: FileList) => {
     console.log('Upload handled by FileUploader component');
     // Refresh the documents list after upload
-    const docs = await getUserDocuments();
-    const cvDocs = docs.filter(doc => doc.document_type === 'cv');
-    setUserDocuments(docs);
-    setCVDocuments(cvDocs);
+    try {
+      const docs = await getUserDocuments();
+      const cvDocs = docs.filter(doc => doc.document_type === 'cv');
+      setUserDocuments(docs);
+      setCVDocuments(cvDocs);
+    } catch (error) {
+      console.error("Error refreshing documents:", error);
+    }
   };
 
   const handleViewAnalysis = async (id: string) => {
@@ -84,8 +108,12 @@ const Kitchen = () => {
     setSelectedAnalysis(analysisData);
     
     // Refresh the list of analyses
-    const analyses = await getRecentAnalyses();
-    setRecentAnalyses(analyses);
+    try {
+      const analyses = await getRecentAnalyses();
+      setRecentAnalyses(analyses);
+    } catch (error) {
+      console.error("Error refreshing analyses:", error);
+    }
     
     // Scroll to the analysis detail
     setTimeout(() => {
@@ -131,12 +159,13 @@ const Kitchen = () => {
         {/* Main Upload Area */}
         <FileUploader onUpload={handleUpload} />
         
-        {/* CV Documents List - NEW SECTION */}
-        {cvDocuments.length > 0 && (
+        {/* CV Documents List */}
+        {(cvDocuments.length > 0 || isLoadingCVs) && (
           <CVDocumentsList 
             documents={cvDocuments}
             onDocumentDeleted={handleDocumentDeleted}
             onExtractData={handleExtractCVData}
+            isLoading={isLoadingCVs}
           />
         )}
         
@@ -144,6 +173,7 @@ const Kitchen = () => {
         <DocumentsGrid 
           documents={userDocuments} 
           onDocumentDeleted={handleDocumentDeleted} 
+          isLoading={isLoading && userDocuments.length === 0}
         />
         
         {/* LinkedIn Data Import */}
@@ -173,6 +203,7 @@ const Kitchen = () => {
         <RecentAnalysesList 
           analyses={recentAnalyses} 
           onViewAnalysis={handleViewAnalysis} 
+          isLoading={isLoadingAnalyses}
         />
         
         {/* Career Ingredients */}
