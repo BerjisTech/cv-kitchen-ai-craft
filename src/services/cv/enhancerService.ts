@@ -34,12 +34,16 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     }
 
     // Get LinkedIn data if available
-    const { data: linkedinData } = await supabase
+    const { data: linkedinData, error: linkedinError } = await supabase
       .from('linkedin_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single()
-      .catch(() => ({ data: null }));
+      .single();
+      
+    if (linkedinError && linkedinError.code !== 'PGRST116') {
+      // PGRST116 is the "no rows returned" error, which is fine
+      console.error("Error fetching LinkedIn data:", linkedinError);
+    }
 
     console.log(`Found ${documents.length} CV documents to process`);
     toast.info(`Processing ${documents.length} CV documents...`, { duration: 3000 });

@@ -15,14 +15,16 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     }
 
     // First check if we already have extracted data for this document
-    const { data: existingData } = await supabase
+    const { data: existingData, error: existingError } = await supabase
       .from('cv_extracted_data')
       .select('extracted_data')
       .eq('document_id', documentId)
       .eq('user_id', user.id)
       .maybeSingle();
     
-    if (existingData?.extracted_data) {
+    if (existingError) {
+      console.error("Error checking for existing extracted data:", existingError);
+    } else if (existingData?.extracted_data) {
       console.log(`Using cached extracted data for document ${documentId}`);
       return existingData.extracted_data as ExtractedCVData;
     }
@@ -43,14 +45,16 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     console.log("Extracted CV data:", data);
     
     // Store the extracted data in the database for future use
-    await supabase.from('cv_extracted_data').insert({
+    const { error: storageError } = await supabase.from('cv_extracted_data').insert({
       document_id: documentId,
       user_id: user.id,
       extracted_data: data
-    }).catch(err => {
-      // Log but don't throw - we still want to return the data even if storing fails
-      console.error("Error storing extracted CV data:", err);
     });
+    
+    if (storageError) {
+      // Log but don't throw - we still want to return the data even if storing fails
+      console.error("Error storing extracted CV data:", storageError);
+    }
     
     return data;
   } catch (error) {

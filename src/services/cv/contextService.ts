@@ -23,9 +23,10 @@ export const getAllCVContext = async (): Promise<string[]> => {
         .select('*')
         .eq('user_id', user.id)
         .single()
-        .then(result => result.data ? [result.data] : [])
-        .catch(() => [])
     ]);
+    
+    // Process LinkedIn data - handle errors gracefully
+    const linkedInProfiles = linkedInResult.error ? [] : linkedInResult.data ? [linkedInResult.data] : [];
     
     if (!documentsResult.data || documentsResult.error) {
       console.error("Error fetching CV documents:", documentsResult.error);
@@ -42,7 +43,7 @@ export const getAllCVContext = async (): Promise<string[]> => {
     }
     
     // Add LinkedIn context if available
-    if (linkedInResult && linkedInResult.length > 0) {
+    if (linkedInProfiles && linkedInProfiles.length > 0) {
       contexts.push('LinkedIn Profile Data Available');
     }
     
