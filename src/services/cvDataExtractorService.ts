@@ -203,7 +203,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         })
         .eq('id', user.id);
       
-      updates.push(profileUpdate);
+      updates.push(profileUpdate.then(res => res));
     }
 
     // 2. Process and store skills
@@ -236,7 +236,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           .from('user_skills')
           .insert(skillsData);
         
-        updates.push(skillsUpdate);
+        updates.push(skillsUpdate.then(res => res));
       }
     }
 
@@ -279,7 +279,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_experience')
             .insert([experienceEntry]);
           
-          updates.push(experienceUpdate);
+          updates.push(experienceUpdate.then(res => res));
         }
       }
     }
@@ -322,7 +322,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_education')
             .insert([educationEntry]);
           
-          updates.push(educationUpdate);
+          updates.push(educationUpdate.then(res => res));
         }
       }
     }
@@ -355,7 +355,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           .from('user_languages')
           .insert(languagesData);
         
-        updates.push(languagesUpdate);
+        updates.push(languagesUpdate.then(res => res));
       }
     }
 
@@ -394,7 +394,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
             .from('user_certifications')
             .insert([certEntry]);
           
-          updates.push(certUpdate);
+          updates.push(certUpdate.then(res => res));
         }
       }
     }
