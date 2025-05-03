@@ -23,13 +23,19 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       existingError = error;
     } catch (e) {
       console.error("Error checking for existing extracted data:", e);
-      // We'll continue with extraction despite this error
+      toast.error("Could not check if this document has already been processed");
+      return null; // Do not proceed if we can't even check for existing data
+    }
+    
+    // If there was an error checking for existing data, stop here
+    if (existingError) {
+      console.error("Error checking for existing extracted data:", existingError);
+      toast.error(`Database error: ${existingError.message}`);
+      return null;
     }
     
     // If we have existing data, use it unless it's a placeholder
-    if (existingError) {
-      console.error("Error checking for existing extracted data:", existingError);
-    } else if (existingData?.extracted_data) {
+    if (existingData?.extracted_data) {
       // Check if the extracted data contains placeholder content
       // We need to safely cast the JSON data to our ProfileData type
       const extractedData = existingData.extracted_data as unknown as ExtractedCVData;
@@ -56,7 +62,25 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
     
     if (documentError || !document) {
       console.error("Error getting document details:", documentError);
-      toast.error("Could not find document details");
+      toast.error("Could not find document details. The document may have been deleted.");
+      return null;
+    }
+    
+    // Verify the document file exists in storage
+    try {
+      const { data: fileExists, error: fileCheckError } = await supabase
+        .storage
+        .from('career-uploads')
+        .createSignedUrl(document.filepath, 10); // Short expiry just to check existence
+      
+      if (fileCheckError || !fileExists) {
+        console.error("File does not exist or is inaccessible:", document.filepath, fileCheckError);
+        toast.error(`The file "${document.filename}" exists in the database but cannot be accessed in storage. It may have been deleted or corrupted.`);
+        return null;
+      }
+    } catch (fileError) {
+      console.error("Error verifying file existence:", fileError);
+      toast.error(`Could not verify if "${document.filename}" exists in storage. It may be inaccessible.`);
       return null;
     }
     

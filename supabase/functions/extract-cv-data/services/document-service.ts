@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 /**
@@ -47,8 +46,7 @@ export async function getSignedURL(supabaseUrl: string, supabaseKey: string, fil
   try {
     console.log(`Generating access URL for file: ${filepath}`);
     
-    // Instead of creating a signed URL, use the public URL directly
-    // since the 'career-uploads' bucket appears to be public
+    // Use the public URL directly since the 'career-uploads' bucket is public
     const publicUrl = `${supabaseUrl}/storage/v1/object/public/career-uploads/${filepath}`;
     console.log("Using public URL for document:", publicUrl);
     
