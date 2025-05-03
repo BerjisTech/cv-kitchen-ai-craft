@@ -17,7 +17,7 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     // First check if we already have extracted data for this document
     const { data: existingData, error: existingError } = await supabase
       .from('cv_extracted_data')
-      .select('extracted_data')
+      .select('extracted_data, id')
       .eq('document_id', documentId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -27,9 +27,17 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     } else if (existingData?.extracted_data) {
       // Check if the extracted data contains placeholder content
       const extractedData = existingData.extracted_data as ExtractedCVData;
-      if (extractedData.summary && extractedData.summary.includes('placeholder')) {
-        console.log(`Cached data contains placeholders for document ${documentId}, re-extracting data`);
-        // Continue with extraction to replace placeholder data
+      if (extractedData.summary && (
+          extractedData.summary.includes('placeholder') || 
+          extractedData.summary.includes('could not be processed')
+      )) {
+        console.log(`Cached data contains placeholders for document ${documentId}, removing it to force re-extraction`);
+        
+        // Delete the existing data with placeholders to force re-extraction
+        await supabase
+          .from('cv_extracted_data')
+          .delete()
+          .eq('id', existingData.id);
       } else {
         console.log(`Using cached extracted data for document ${documentId}`);
         return extractedData;
@@ -39,6 +47,13 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
     toast.info("Extracting data from CV...", { duration: 2000 });
     
+    // Get the document details to pass to the toast if extraction fails
+    const { data: document } = await supabase
+      .from('user_documents')
+      .select('filename')
+      .eq('id', documentId)
+      .single();
+    
     // Call the Edge Function to extract data from the CV
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
       body: { documentId, userId: user.id },
@@ -46,13 +61,14 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
 
     if (error) {
       console.error("Error calling extract-cv-data function:", error);
-      throw new Error(`Failed to extract data: ${error.message}`);
+      toast.error(`Failed to extract data from ${document?.filename || 'document'}. Please try again later.`);
+      return null;
     }
 
     // Check if the extraction returned an error about the document not being processable
-    if (data && data.error && data.documentName) {
-      console.error(`Failed to extract data from ${data.documentName}: ${data.error}`);
-      toast.error(`Could not extract data from ${data.documentName}: ${data.error}`);
+    if (data && data.error) {
+      console.error(`Failed to extract data from ${data.documentName || document?.filename || 'document'}: ${data.error}`);
+      toast.error(`Could not extract data from ${data.documentName || document?.filename || 'document'}: ${data.error}`);
       return null;
     }
     
@@ -60,15 +76,18 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     
     // Store the extracted data in the database for future use
     if (data) {
-      const { error: storageError } = await supabase.from('cv_extracted_data').insert({
-        document_id: documentId,
-        user_id: user.id,
-        extracted_data: data
-      });
-      
-      if (storageError) {
-        // Log but don't throw - we still want to return the data even if storing fails
-        console.error("Error storing extracted CV data:", storageError);
+      // Only store if we have actual data, not placeholder content
+      if (!data.summary || !data.summary.includes('placeholder')) {
+        const { error: storageError } = await supabase.from('cv_extracted_data').insert({
+          document_id: documentId,
+          user_id: user.id,
+          extracted_data: data
+        });
+        
+        if (storageError) {
+          // Log but don't throw - we still want to return the data even if storing fails
+          console.error("Error storing extracted CV data:", storageError);
+        }
       }
     }
     

@@ -25,12 +25,24 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     
     if (docsError) {
       console.error("Error fetching CV documents:", docsError);
+      toast.error("Failed to fetch your CV documents");
       return false;
     }
     
     if (!documents || documents.length === 0) {
       toast.info("No CVs found. Please upload a CV to enhance your profile.");
       return false;
+    }
+
+    // Clear existing extracted data to force re-extraction
+    const { error: clearError } = await supabase
+      .from('cv_extracted_data')
+      .delete()
+      .eq('user_id', user.id);
+      
+    if (clearError) {
+      console.error("Error clearing existing CV data:", clearError);
+      // Continue anyway
     }
 
     // Get LinkedIn data if available
@@ -52,6 +64,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     const cvTexts: string[] = [];
     const allExtractedData: ExtractedCVData[] = [];
     let successfulExtractions = 0;
+    let failedExtractions = 0;
     
     for (const doc of documents) {
       try {
@@ -61,20 +74,29 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
         if (extractedData) {
           console.log(`Successfully extracted data from ${doc.filename}:`, extractedData);
           
-          // Only include non-placeholder data
-          if (!extractedData.summary?.includes('placeholder')) {
+          // Check for placeholder content
+          const hasPlaceholderContent = extractedData.summary && 
+            (extractedData.summary.includes('placeholder') || 
+             extractedData.summary.includes('could not be processed'));
+          
+          if (!hasPlaceholderContent) {
             allExtractedData.push(extractedData);
             successfulExtractions++;
             
             // Convert extracted data to text format for AI prompt
             const textRepresentation = convertExtractedDataToText(extractedData, doc.filename);
             cvTexts.push(textRepresentation);
+          } else {
+            console.log(`Skipped placeholder data from ${doc.filename}`);
+            failedExtractions++;
           }
         } else {
           console.error(`Failed to extract data from ${doc.filename}`);
+          failedExtractions++;
         }
       } catch (error) {
         console.error(`Error extracting data from document ${doc.id}:`, error);
+        failedExtractions++;
       }
     }
     
@@ -88,9 +110,9 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     }
     
     if (cvTexts.length === 0) {
-      toast.error("Could not extract meaningful data from any of your CVs. Please make sure your CV files are in a readable format.");
+      toast.error("Could not extract meaningful data from any of your CVs. The documents may be in an unreadable format or do not contain enough information.");
       return false;
-    } else if (successfulExtractions < documents.length) {
+    } else if (failedExtractions > 0) {
       toast.warning(`Successfully extracted data from ${successfulExtractions} of ${documents.length} CVs.`);
     }
 
@@ -100,7 +122,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     const mergedData = await generateUnifiedProfile(cvTexts.join("\n\n----- NEXT SOURCE -----\n\n"));
     
     if (!mergedData) {
-      toast.error("Failed to generate unified profile data");
+      toast.error("Failed to generate unified profile data. Please try again later.");
       return false;
     }
 
@@ -108,6 +130,13 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
 
     // 4. Update profile with the merged data
     const success = await updateProfileWithCVData(mergedData);
+    
+    if (success) {
+      toast.success("Your profile has been enhanced with data from your CVs!");
+    } else {
+      toast.error("Failed to update profile with CV data.");
+    }
+    
     return success;
   } catch (error) {
     console.error('Error in enhanceUserProfile:', error);
@@ -301,7 +330,7 @@ Return the result strictly in the following JSON format:
   ]
 }
 
-Be sure to:
+CRITICAL INSTRUCTIONS (you MUST follow these):
 - Use ONLY real data found in the documents
 - Do not generate or invent ANY information not present in the source documents
 - If you find conflicting information (like different names), use the most recent source
@@ -313,8 +342,10 @@ Be sure to:
 - Format multi-paragraph text without line breaks (use spaces instead)
 - If data for a field is not available in ANY source, either omit the field or leave it as null/empty string
 - DO NOT generate placeholder or generic content - only use real data from the documents
+- If you cannot extract enough meaningful information, return an error message instead of creating a profile with generic data
+- If there's not enough data to create a meaningful profile, return: { "error": "Not enough data to create a meaningful profile" } instead of making up content
 
-CV TEXTS:
+Here are the CV TEXTS:
 ${parsedText}
 `;
 
@@ -330,13 +361,22 @@ ${parsedText}
     
     if (error) {
       console.error("Error calling unify-cv-data function:", error);
+      toast.error("Failed to process your CV data with AI. Please try again later.");
       throw error;
+    }
+    
+    // Check for error message in response
+    if (data && data.error) {
+      console.error("Error from unify-cv-data function:", data.error);
+      toast.error(`Failed to create profile: ${data.error}`);
+      return null;
     }
     
     console.log("Successfully generated unified CV data from AI");
     return data as ExtractedCVData;
   } catch (error) {
     console.error("Error generating unified profile:", error);
+    toast.error("Failed to generate unified profile. Please try again later.");
     return null;
   }
 }

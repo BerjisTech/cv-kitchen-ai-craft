@@ -82,11 +82,13 @@ serve(async (req) => {
       
       if (existingDataResponse.ok) {
         const existingData = await existingDataResponse.json();
-        if (existingData && existingData.length > 0) {
-          // Delete the existing cached extraction if it contains placeholder data
-          if (existingData[0].extracted_data && 
-              typeof existingData[0].extracted_data.summary === 'string' && 
-              existingData[0].extracted_data.summary.includes('placeholder')) {
+        if (existingData && existingData.length > 0 && existingData[0].extracted_data) {
+          // Check if the extracted data contains placeholder content
+          const extractedData = existingData[0].extracted_data;
+          if (extractedData.summary && (
+              typeof extractedData.summary === 'string' && 
+              (extractedData.summary.includes('placeholder') || 
+              extractedData.summary.includes('could not be processed')))) {
             
             console.log("Found placeholder data for document:", documentId, "- deleting it to force re-extraction");
             
@@ -101,7 +103,7 @@ serve(async (req) => {
                 }
               }
             );
-          } else {
+          } else if (!extractedData.summary || !extractedData.summary.includes('placeholder')) {
             console.log("Using existing extracted data for document:", documentId);
             return new Response(
               JSON.stringify(existingData[0].extracted_data),
@@ -136,7 +138,7 @@ serve(async (req) => {
       const errorText = await storageResponse.text();
       console.error("Failed to get document download URL:", errorText);
       return new Response(
-        JSON.stringify({ error: `Failed to access document storage: ${errorText}` }),
+        JSON.stringify({ error: `Failed to access document storage: ${errorText}`, documentName: document.filename }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -156,8 +158,11 @@ serve(async (req) => {
     if (!fileResponse.ok) {
       console.error("Failed to download document content, status:", fileResponse.status);
       return new Response(
-        JSON.stringify({ error: `Failed to download document content: ${fileResponse.status}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: `Failed to download document: the file seems to be inaccessible or the URL has expired`,
+          documentName: document.filename 
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -166,15 +171,26 @@ serve(async (req) => {
     
     console.log("Document file type:", document.file_type);
     
-    // Handle different file types
-    if (document.file_type?.includes('pdf')) {
-      // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
-      fileContent = await fileResponse.blob();
-      fileContentDescription = `This is a PDF document named "${document.filename}". As you don't have direct PDF parsing capabilities, please inform the user that PDF extraction is currently limited, and they should consider uploading a text-based CV for better results.`;
-    } else {
-      // For text documents, extract the content
-      fileContent = await fileResponse.text();
-      fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+    try {
+      // Handle different file types
+      if (document.file_type?.includes('pdf')) {
+        // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
+        fileContent = await fileResponse.blob();
+        fileContentDescription = `This is a PDF document named "${document.filename}" that contains a CV/resume.`;
+      } else {
+        // For text documents, extract the content
+        fileContent = await fileResponse.text();
+        fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+      }
+    } catch (fileError) {
+      console.error("Error reading document content:", fileError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to read document content: ${fileError.message}`,
+          documentName: document.filename 
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     // Use OpenAI to extract data from the CV
@@ -247,13 +263,14 @@ serve(async (req) => {
       }
       
       IMPORTANT INSTRUCTIONS:
-      - Be extremely thorough and extract as much detail as possible. The skills, languages, experience, and education fields should be comprehensive lists.
+      - Be extremely thorough and extract as much detail as possible.
       - If a field can't be determined from the CV, use null or an empty array as appropriate. 
       - Do not make up or generate fictional data for any field.
-      - If you cannot extract meaningful information (especially for PDFs), set the respective fields to null and DO NOT generate placeholder or fictional data.
       - DO NOT include a message saying the file couldn't be processed - just return the data structure with null values for fields you couldn't extract.
       - Ensure the output is valid JSON.
       - Fields can be null but the overall structure should be maintained.
+      - NEVER include placeholder text in any field, especially in the summary.
+      - If you cannot extract enough information to create a meaningful profile, return: { "error": "Not enough data to create a meaningful profile" }
     `;
     
     try {
@@ -268,11 +285,11 @@ serve(async (req) => {
           messages: [
             { 
               role: 'system', 
-              content: 'You are a CV parsing assistant that extracts structured information from resumes and CVs. Return ONLY valid JSON without any other text. Never fabricate data - if you cannot extract information, return null values or empty arrays.' 
+              content: 'You are a CV parsing assistant that extracts structured information from resumes and CVs. Return ONLY valid JSON without any other text. Never fabricate data - if you cannot extract information, return null values or empty arrays. If you cannot extract enough information to create a meaningful profile, return an error message.' 
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.1, // Using a very low temperature for more deterministic, factual responses
+          temperature: 0.0, // Using zero temperature for deterministic, factual responses
           response_format: { type: "json_object" }
         })
       });
@@ -301,11 +318,23 @@ serve(async (req) => {
       try {
         extractedData = JSON.parse(openAIData.choices[0].message.content);
         
+        // Check if the extraction returned an error
+        if (extractedData.error) {
+          console.log("OpenAI returned an error:", extractedData.error);
+          return new Response(
+            JSON.stringify({ 
+              error: extractedData.error, 
+              documentName: document.filename 
+            }),
+            { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         // Check if the extraction was meaningful or just null/empty values
         const hasRealContent = 
           (extractedData.fullName && extractedData.fullName !== document.filename.replace(/\.pdf$/i, '')) ||
           (extractedData.summary && !extractedData.summary.includes('placeholder')) ||
-          (extractedData.skills && extractedData.skills.length > 0 && !extractedData.skills.includes('Communication')) ||
+          (extractedData.skills && extractedData.skills.length > 2) ||
           (extractedData.experience && extractedData.experience.length > 0);
         
         if (!hasRealContent) {
@@ -320,6 +349,13 @@ serve(async (req) => {
         }
         
         console.log("Successfully extracted CV data");
+        
+        // Don't store in database here, let the client handle that
+        return new Response(
+          JSON.stringify(extractedData),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+        
       } catch (error) {
         console.error("Error parsing OpenAI response as JSON:", error);
         console.error("Response content:", openAIData.choices[0].message.content);
@@ -328,79 +364,6 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Store the extracted data in a dedicated table for future use
-      try {
-        // Check if entry exists for this user and document
-        const existingDataResponse = await fetch(
-          `${supabaseUrl}/rest/v1/cv_extracted_data?user_id=eq.${userId}&document_id=eq.${documentId}`,
-          {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        const existingData = await existingDataResponse.json();
-        let dbResult;
-        
-        if (existingData && existingData.length > 0) {
-          // Update existing record
-          dbResult = await fetch(
-            `${supabaseUrl}/rest/v1/cv_extracted_data?id=eq.${existingData[0].id}`,
-            {
-              method: 'PATCH',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                extracted_data: extractedData,
-                updated_at: new Date().toISOString()
-              })
-            }
-          );
-        } else {
-          // Create new record
-          dbResult = await fetch(
-            `${supabaseUrl}/rest/v1/cv_extracted_data`,
-            {
-              method: 'POST',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                user_id: userId,
-                document_id: documentId,
-                extracted_data: extractedData,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-            }
-          );
-        }
-        
-        if (!dbResult.ok) {
-          const errorText = await dbResult.text();
-          console.error("Error saving extracted data to database:", errorText);
-        } else {
-          console.log("Successfully saved extracted data to database");
-        }
-      } catch (dbError) {
-        console.error("Error handling database operations:", dbError);
-      }
-
-      return new Response(
-        JSON.stringify(extractedData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     } catch (openAIError) {
       console.error("OpenAI processing error:", openAIError);
       return new Response(
