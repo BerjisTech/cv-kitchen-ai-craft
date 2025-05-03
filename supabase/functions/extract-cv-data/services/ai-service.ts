@@ -1,10 +1,11 @@
 
 import { corsHeaders } from "../utils/cors.ts";
+import type { ExtractedCVData } from "../types.ts";
 
 /**
  * Extracts structured data from CV content using OpenAI
  */
-export async function extractDataWithOpenAI(content: string | null, signal?: AbortSignal) {
+export async function extractDataWithOpenAI(content: string | null, signal?: AbortSignal): Promise<ExtractedCVData | {error: string}> {
   try {
     console.log("Starting AI extraction process");
     
@@ -115,7 +116,25 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       // Parse the JSON response
       const extractedData = JSON.parse(generatedContent);
       console.log("Successfully parsed AI response as JSON");
-      return extractedData;
+      
+      // Ensure the parsed data has the required structure
+      const validatedData: ExtractedCVData = {
+        personal_info: extractedData.personal_info || { 
+          full_name: "", 
+          location: "", 
+          linkedin_url: "", 
+          website: "", 
+          github_url: "" 
+        },
+        summary: extractedData.summary || "",
+        work_experience: Array.isArray(extractedData.work_experience) ? extractedData.work_experience : [],
+        education: Array.isArray(extractedData.education) ? extractedData.education : [],
+        skills: Array.isArray(extractedData.skills) ? extractedData.skills : [],
+        certifications: Array.isArray(extractedData.certifications) ? extractedData.certifications : [],
+        languages: Array.isArray(extractedData.languages) ? extractedData.languages : []
+      };
+      
+      return validatedData;
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
       return {

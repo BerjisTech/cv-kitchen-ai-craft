@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import type { ExtractedCVData } from './types';
+import type { ExtractedCVData, ProfileData } from './types';
 
 /**
  * Extracts data from a CV document using the Supabase Edge Function
@@ -27,7 +27,9 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       console.error("Error checking for existing extracted data:", existingError);
     } else if (existingData?.extracted_data) {
       // Check if the extracted data contains placeholder content
-      const extractedData = existingData.extracted_data as ExtractedCVData;
+      // We need to safely cast the JSON data to our ProfileData type
+      const extractedData = existingData.extracted_data as unknown as ExtractedCVData;
+      
       if (extractedData.summary && (
           extractedData.summary.includes('placeholder') || 
           extractedData.summary.includes('could not be processed')
@@ -108,7 +110,8 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       
       toast.success(`Successfully extracted data from "${document.filename}"`, { duration: 3000 });
       
-      return data;
+      // Cast the response data to our ExtractedCVData type
+      return data as unknown as ExtractedCVData;
     } catch (functionError: any) {
       console.error("Error in extractCVData function call:", functionError);
       let errorMessage = "Failed to process document.";
