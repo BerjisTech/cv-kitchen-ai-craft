@@ -48,7 +48,7 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
     // Get the document details to pass to the toast if extraction fails
     const { data: document } = await supabase
       .from('user_documents')
-      .select('filename, filepath')
+      .select('filename, filepath, file_type')
       .eq('id', documentId)
       .single();
     
@@ -57,8 +57,17 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       return null;
     }
 
+    // Check file type compatibility
+    const fileExt = document.filename.split('.').pop()?.toLowerCase();
+    const supportedTypes = ['pdf', 'docx', 'doc', 'txt', 'rtf'];
+    
+    if (!supportedTypes.includes(fileExt || '')) {
+      toast.error(`Unsupported file format: .${fileExt}. We support PDF, DOCX, DOC, TXT, and RTF.`);
+      return null;
+    }
+
     console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
-    toast.info("Extracting data from CV...", { duration: 3000 });
+    toast.info("Extracting data from CV...", { duration: 5000 });
     
     try {
       // Call the Edge Function to extract data from the CV
@@ -73,12 +82,19 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
         console.error("Error calling extract-cv-data function:", error);
         
         // Provide more detailed error feedback
-        if (error.message.includes('422')) {
-          toast.error(`The document "${document?.filename || 'file'}" could not be processed. It might be inaccessible or in an unsupported format.`);
-        } else {
-          toast.error(`Failed to extract data from ${document?.filename || 'document'}. Please try again later.`);
+        let errorMessage = `Failed to extract data from ${document?.filename || 'document'}`;
+        
+        if (error.message) {
+          if (error.message.includes('422')) {
+            errorMessage = `The document "${document?.filename}" could not be processed. It might be password-protected, corrupted, or in an unsupported format.`;
+          } else if (error.message.includes('408') || error.message.includes('timeout')) { 
+            errorMessage = `The extraction process timed out. The file "${document?.filename}" may be too large or complex.`;
+          } else if (error.message.includes('404')) {
+            errorMessage = `The file "${document?.filename}" could not be found in storage.`;
+          }
         }
         
+        toast.error(errorMessage, { duration: 5000 });
         return null;
       }
 
@@ -90,6 +106,13 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       }
       
       console.log("Extracted CV data:", data);
+      
+      // Check if we got placeholder data
+      if (data && data.summary && data.summary.includes('placeholder')) {
+        toast.warning(`Could only extract limited data from "${document.filename}". The file may be in an unsupported format.`, { duration: 6000 });
+      } else {
+        toast.success(`Successfully extracted data from "${document.filename}"`, { duration: 3000 });
+      }
       
       // Store the extracted data in the database for future use
       if (data) {
