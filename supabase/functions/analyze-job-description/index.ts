@@ -30,9 +30,13 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
 
-    // Connect to Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://rnjxbvsodatbxaswmiol.supabase.co';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuanhidnNvZGF0Ynhhc3dtaW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMTM0ODIsImV4cCI6MjA2MTc4OTQ4Mn0.cH4bWWKpDelg6R8OC7E4ytjjALRuIDuS-AHa4Y5gK90';
+    // Get Supabase URL and anon key from environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration not found');
+    }
     
     // We'll access the database directly through the REST API instead of using the client
     // This avoids issues with Supabase client creation in the edge function
