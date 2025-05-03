@@ -41,61 +41,63 @@ export async function getDocument(supabaseUrl: string, supabaseKey: string, docu
 }
 
 /**
- * Generates a signed URL for downloading a file
+ * Generates a URL for accessing a file from public storage
  */
 export async function getSignedURL(supabaseUrl: string, supabaseKey: string, filepath: string) {
   try {
-    console.log(`Generating signed URL for file: ${filepath}`);
+    console.log(`Generating access URL for file: ${filepath}`);
     
-    // Check if the file actually exists first
-    const fileExistsResponse = await fetch(
-      `${supabaseUrl}/storage/v1/object/info/career-uploads/${filepath}`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
-      }
-    );
+    // Instead of creating a signed URL, use the public URL directly
+    // since the 'career-uploads' bucket appears to be public
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/career-uploads/${filepath}`;
+    console.log("Using public URL for document:", publicUrl);
+    
+    // Check if the file exists with a HEAD request
+    const fileExistsResponse = await fetch(publicUrl, {
+      method: 'HEAD'
+    });
     
     if (!fileExistsResponse.ok) {
-      console.error(`File does not exist in storage: ${filepath} (HTTP ${fileExistsResponse.status})`);
-      return null;
-    }
-    
-    const signedURLRequest = `${supabaseUrl}/storage/v1/object/sign/career-uploads/${filepath}`;
-    console.log("Requesting signed URL from:", signedURLRequest);
-    
-    const storageResponse = await fetch(
-      signedURLRequest,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ expiresIn: 300 })
+      console.error(`File does not exist or is not publicly accessible: ${filepath} (HTTP ${fileExistsResponse.status})`);
+      
+      // Fall back to signed URL approach if public access fails
+      console.log("Falling back to signed URL approach...");
+      const signedURLRequest = `${supabaseUrl}/storage/v1/object/sign/career-uploads/${filepath}`;
+      
+      const storageResponse = await fetch(
+        signedURLRequest,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ expiresIn: 300 })
+        }
+      );
+      
+      if (!storageResponse.ok) {
+        const errorText = await storageResponse.text();
+        console.error(`Failed to get document download URL (HTTP ${storageResponse.status}):`, errorText);
+        return null;
       }
-    );
-    
-    if (!storageResponse.ok) {
-      const errorText = await storageResponse.text();
-      console.error(`Failed to get document download URL (HTTP ${storageResponse.status}):`, errorText);
-      return null;
+      
+      const { signedURL } = await storageResponse.json();
+      console.log("Got signed URL for document:", signedURL);
+      
+      // Make sure URL is absolute
+      const fullSignedUrl = signedURL.startsWith('http') 
+        ? signedURL 
+        : `${supabaseUrl}${signedURL.startsWith('/') ? '' : '/'}${signedURL}`;
+      
+      return fullSignedUrl;
     }
     
-    const { signedURL } = await storageResponse.json();
-    console.log("Got signed URL for document:", signedURL);
-    
-    // Make sure URL is absolute
-    const fullSignedUrl = signedURL.startsWith('http') 
-      ? signedURL 
-      : `${supabaseUrl}${signedURL.startsWith('/') ? '' : '/'}${signedURL}`;
-    
-    return fullSignedUrl;
-  } catch (signError) {
-    console.error("Network error generating signed URL:", signError);
+    console.log("File exists at public URL - using it directly");
+    return publicUrl;
+  } catch (urlError) {
+    console.error("Network error generating file access URL:", urlError);
     return null;
   }
 }

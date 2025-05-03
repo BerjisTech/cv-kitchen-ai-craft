@@ -82,12 +82,10 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       
       if (error) {
         console.error("Error calling extract-cv-data function:", error);
-        console.error("Response from function:", data);
         
         // Provide more detailed error information
         let errorDetails = "Unknown error";
         if (error.message) errorDetails = error.message;
-        if (data && data.error) errorDetails = data.error;
         
         toast.error(`Failed to extract data: ${errorDetails}`, { duration: 5000 });
         return null;
@@ -95,7 +93,6 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       
       if (!data || data.error) {
         console.error("Function returned an error:", data?.error || "Unknown error");
-        console.error("Full response:", data);
         
         // Provide more context in the error message
         const errorMessage = data?.error || "Unknown processing error";
@@ -114,6 +111,7 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       // Add more detailed error information
       if (functionError.message) {
         errorMessage += ` Details: ${functionError.message}`;
+        console.error("Error message:", functionError.message);
       }
       
       if (functionError.response) {
@@ -130,6 +128,7 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
               if (responseJson.details) {
                 errorMessage += ` (${responseJson.details})`;
               }
+              console.error("Parsed error details:", responseJson);
             }
           } catch (e) {
             // Not JSON, use the text
@@ -184,7 +183,6 @@ export async function enhanceUserProfile(): Promise<boolean> {
         
         console.error("Error enhancing profile:", error);
         console.error("Error details:", errorDetails);
-        console.error("Response data:", data);
         
         toast.error(`Failed to enhance profile: ${errorDetails}`, { duration: 5000 });
         return false;
@@ -193,7 +191,6 @@ export async function enhanceUserProfile(): Promise<boolean> {
       if (!data || data.error) {
         const errorMessage = data?.error || "Unknown processing error";
         console.error("Profile enhancement returned an error:", errorMessage);
-        console.error("Full response:", data);
         
         toast.error(`Profile enhancement failed: ${errorMessage}`, { duration: 5000 });
         return false;
