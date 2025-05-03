@@ -1,8 +1,8 @@
 
-export interface ProfileData {
-  personal_info: {
+export interface ExtractedCVData {
+  personal_info?: {
     full_name?: string;
-    email?: string; 
+    email?: string;
     phone?: string;
     location?: string;
     linkedin_url?: string;
@@ -10,36 +10,41 @@ export interface ProfileData {
     github_url?: string;
   };
   summary?: string;
-  work_experience: Array<{
+  skills?: Array<{ name: string; level?: number }>;
+  work_experience?: Array<{
     company: string;
     role: string;
     start_date: string;
     end_date?: string;
     description?: string;
-    source?: string;
   }>;
-  education: Array<{
+  education?: Array<{
     institution: string;
-    degree?: string;
-    start_year?: string;
+    degree: string;
+    start_year: string;
     end_year?: string;
     description?: string;
-    source?: string;
   }>;
-  skills: Array<{
+  certifications?: Array<{
     name: string;
-    level?: number;
-    category?: string;
-  }>;
-  certifications: Array<{
-    name: string;
-    issuer: string;
+    issuer?: string;
     date?: string;
   }>;
-  languages: Array<{
+  languages?: Array<{
     language: string;
     level?: string;
   }>;
 }
 
-export type ExtractedCVData = ProfileData;
+export interface ProfileData {
+  id: string;
+  full_name?: string;
+  avatar_url?: string;
+  username?: string;
+  location?: string;
+  website?: string;
+  bio?: string;
+  role?: string;
+  created_at: string;
+  updated_at: string;
+}

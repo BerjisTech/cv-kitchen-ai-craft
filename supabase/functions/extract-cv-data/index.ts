@@ -26,6 +26,15 @@ serve(async (req) => {
       const documentId = requestData.documentId;
       const userId = requestData.userId;
       
+      if (!documentId && !userId) {
+        console.error("Missing required parameters: documentId and userId");
+        clearTimeout(timeoutId);
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters: documentId and userId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       // If specific document processing is requested
       if (documentId && userId) {
         console.log(`Processing request for documentId: ${documentId}, userId: ${userId}`);
@@ -39,10 +48,10 @@ serve(async (req) => {
       }
       
       // Invalid request
-      console.error("Missing required parameters");
+      console.error("Missing required parameters or invalid request format");
       clearTimeout(timeoutId);
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'Missing required parameters or invalid request format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (parseError) {
