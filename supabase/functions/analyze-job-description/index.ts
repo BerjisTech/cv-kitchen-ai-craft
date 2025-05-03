@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,20 +30,12 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
 
-    // Connect to Supabase to get user's CV documents
+    // Connect to Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://rnjxbvsodatbxaswmiol.supabase.co';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuanhidnNvZGF0Ynhhc3dtaW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMTM0ODIsImV4cCI6MjA2MTc4OTQ4Mn0.cH4bWWKpDelg6R8OC7E4ytjjALRuIDuS-AHa4Y5gK90';
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    // Get user's most recent CV content (in a real implementation, we'd extract text from PDFs/DOCXs)
-    const { data: userDocs } = await supabase
-      .from('user_documents')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('document_type', 'cv')
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // We'll access the database directly through the REST API instead of using the client
+    // This avoids issues with Supabase client creation in the edge function
 
     // Call OpenAI API to analyze the job description
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -77,28 +68,36 @@ serve(async (req) => {
       throw new Error(`OpenAI API error: ${analysisResult.error?.message || 'Unknown error'}`);
     }
 
-    // Store the analysis in the database
+    // Store the analysis in the database using Supabase REST API
     const timestamp = new Date().toISOString();
-    const { data: jobAnalysis, error: dbError } = await supabase
-      .from('job_analyses')
-      .insert({
+    const dbResponse = await fetch(`${supabaseUrl}/rest/v1/job_analyses`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
         user_id: userId,
         job_description: jobDescription,
         analysis: analysisResult.choices[0].message.content,
-        created_at: timestamp
+        created_at: timestamp,
+        updated_at: timestamp
       })
-      .select()
-      .single();
+    });
 
-    if (dbError) {
+    if (!dbResponse.ok) {
+      const dbError = await dbResponse.json();
       console.error('Database error:', dbError);
-      // Continue anyway as this is not critical - we can still return the analysis
+      throw new Error('Failed to store analysis in database');
     }
+
+    const jobAnalysis = await dbResponse.json();
 
     return new Response(
       JSON.stringify({
         analysis: analysisResult.choices[0].message.content,
-        id: jobAnalysis?.id || null,
+        id: jobAnalysis[0]?.id || null,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
