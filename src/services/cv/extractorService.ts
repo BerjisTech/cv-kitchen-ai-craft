@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { ExtractedCVData } from './types';
+import type { ExtractedCVData } from './types';
 
 /**
  * Extracts data from a CV document using the Supabase Edge Function

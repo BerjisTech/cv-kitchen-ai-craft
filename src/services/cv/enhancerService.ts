@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { extractCVData } from './extractorService';
 import { updateProfileWithCVData } from './profileUpdaterService';
-import { ExtractedCVData } from './types';
+import type { ExtractedCVData } from './types';
 
 /**
  * Enhances the user's profile with data from all CVs

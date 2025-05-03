@@ -1,7 +1,5 @@
 
-import { CVData } from '@/types/CVData';
-
-export interface ExtractedCVData {
+export type ExtractedCVData = {
   fullName?: string;
   title?: string;
   contact?: {
@@ -37,4 +35,4 @@ export interface ExtractedCVData {
     issuer?: string;
     date?: string;
   }>;
-}
+};
