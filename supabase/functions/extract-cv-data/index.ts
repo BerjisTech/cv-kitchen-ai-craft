@@ -115,40 +115,9 @@ serve(async (req) => {
     if (!storageResponse.ok) {
       const errorText = await storageResponse.text();
       console.error("Failed to get document download URL:", errorText);
-      
-      // Since we can't access the file, generate mock data if needed
-      // This is a fallback solution when files aren't accessible
-      const mockExtractedData = generateMockData(document);
-      
-      // Store the mock data
-      try {
-        await fetch(
-          `${supabaseUrl}/rest/v1/cv_extracted_data`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              document_id: documentId,
-              extracted_data: mockExtractedData,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-          }
-        );
-        console.log("Stored mock data for document:", documentId);
-      } catch (storeError) {
-        console.error("Failed to store mock data:", storeError);
-      }
-      
       return new Response(
-        JSON.stringify(mockExtractedData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Failed to access document storage: ${errorText}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -166,39 +135,9 @@ serve(async (req) => {
     const fileResponse = await fetch(fullSignedUrl);
     if (!fileResponse.ok) {
       console.error("Failed to download document content, status:", fileResponse.status);
-      
-      // Since we can't access the file, generate mock data
-      const mockExtractedData = generateMockData(document);
-      
-      // Store the mock data
-      try {
-        await fetch(
-          `${supabaseUrl}/rest/v1/cv_extracted_data`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              document_id: documentId,
-              extracted_data: mockExtractedData,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-          }
-        );
-        console.log("Stored mock data for document:", documentId);
-      } catch (storeError) {
-        console.error("Failed to store mock data:", storeError);
-      }
-      
       return new Response(
-        JSON.stringify(mockExtractedData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Failed to download document content: ${fileResponse.status}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -311,39 +250,9 @@ serve(async (req) => {
       if (!openAIResponse.ok) {
         const errorText = await openAIResponse.text();
         console.error("OpenAI API error:", errorText);
-        
-        // Use mock data as fallback if OpenAI fails
-        const mockExtractedData = generateMockData(document);
-        
-        // Store the mock data
-        try {
-          await fetch(
-            `${supabaseUrl}/rest/v1/cv_extracted_data`,
-            {
-              method: 'POST',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                user_id: userId,
-                document_id: documentId,
-                extracted_data: mockExtractedData,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-            }
-          );
-          console.log("Stored mock data due to OpenAI error");
-        } catch (storeError) {
-          console.error("Failed to store mock data:", storeError);
-        }
-        
         return new Response(
-          JSON.stringify(mockExtractedData),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -352,38 +261,9 @@ serve(async (req) => {
       
       if (!openAIData.choices || openAIData.choices.length === 0) {
         console.error("No content generated from OpenAI");
-        // Use mock data as fallback
-        const mockExtractedData = generateMockData(document);
-        
-        // Store the mock data
-        try {
-          await fetch(
-            `${supabaseUrl}/rest/v1/cv_extracted_data`,
-            {
-              method: 'POST',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                user_id: userId,
-                document_id: documentId,
-                extracted_data: mockExtractedData,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-            }
-          );
-          console.log("Stored mock data due to empty OpenAI response");
-        } catch (storeError) {
-          console.error("Failed to store mock data:", storeError);
-        }
-        
         return new Response(
-          JSON.stringify(mockExtractedData),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: "Failed to extract data from CV" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -394,9 +274,10 @@ serve(async (req) => {
       } catch (error) {
         console.error("Error parsing OpenAI response as JSON:", error);
         console.error("Response content:", openAIData.choices[0].message.content);
-        
-        // Use mock data as fallback
-        extractedData = generateMockData(document);
+        return new Response(
+          JSON.stringify({ error: "Failed to parse extracted data" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     
       // Store the extracted data in a dedicated table for future use
@@ -473,39 +354,9 @@ serve(async (req) => {
       );
     } catch (openAIError) {
       console.error("OpenAI processing error:", openAIError);
-      
-      // Use mock data as fallback
-      const mockExtractedData = generateMockData(document);
-      
-      // Store the mock data
-      try {
-        await fetch(
-          `${supabaseUrl}/rest/v1/cv_extracted_data`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              document_id: documentId,
-              extracted_data: mockExtractedData,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-          }
-        );
-        console.log("Stored mock data due to OpenAI processing error");
-      } catch (storeError) {
-        console.error("Failed to store mock data:", storeError);
-      }
-      
       return new Response(
-        JSON.stringify(mockExtractedData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Failed to process CV with AI: ${openAIError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -517,73 +368,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to generate mock CV data
-function generateMockData(document: any) {
-  const filename = document.filename || "Unknown Document";
-  
-  // Extract potential name from filename
-  const potentialName = filename.split('.')[0].replace(/[-_]/g, ' ');
-  const nameParts = potentialName.split(' ').map(part => 
-    part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-  );
-  
-  const mockData = {
-    fullName: nameParts.join(' '),
-    title: "Professional from CV",
-    contact: {
-      email: `${nameParts.join('.').toLowerCase()}@example.com`,
-      phone: "+1 234 567 8900",
-      location: "Major City, Country",
-      website: null,
-      linkedin: null,
-      github: null
-    },
-    summary: `Experienced professional with background extracted from ${filename}. This is a placeholder summary generated because the original file could not be processed.`,
-    skills: ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management"],
-    experience: [
-      {
-        company: "Recent Company",
-        role: "Senior Position",
-        start: "2020-01",
-        end: "Present",
-        description: "Worked on important projects and initiatives."
-      },
-      {
-        company: "Previous Company",
-        role: "Mid-level Position",
-        start: "2017-03",
-        end: "2019-12",
-        description: "Gained experience in relevant industry skills."
-      }
-    ],
-    education: [
-      {
-        school: "Major University",
-        degree: "Bachelor's Degree in Relevant Field",
-        start: "2013",
-        end: "2017",
-        description: "Graduated with honors."
-      }
-    ],
-    languages: [
-      {
-        language: "English",
-        proficiency: "Fluent"
-      },
-      {
-        language: "Second Language",
-        proficiency: "Intermediate"
-      }
-    ],
-    certifications: [
-      {
-        name: "Industry Standard Certification",
-        issuer: "Certification Authority",
-        date: "2019-06"
-      }
-    ]
-  };
-  
-  return mockData;
-}

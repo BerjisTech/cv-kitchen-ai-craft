@@ -17,95 +17,84 @@ serve(async (req) => {
     const { prompt, userId } = await req.json();
     
     if (!prompt || !userId) {
-      console.error("Missing required parameters:", { prompt: !!prompt, userId: !!userId });
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log("Processing CV unification request for user:", userId);
 
-    // Get OpenAI API key from environment variables
+    // Get OpenAI API key from environment
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    
     if (!openAIApiKey) {
-      console.error("OpenAI API key not configured");
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log("Processing CV unification request for user:", userId);
     
-    try {
-      console.log("Calling OpenAI to unify CV data...");
-      
-      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'You are an expert CV analyzer that extracts structured information from CVs. Return a structured JSON response only based on real data in the provided documents. Do not generate fictional information.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-        }),
-      });
+    console.log("Calling OpenAI to unify CV data...");
+    
+    // Call OpenAI API to process the data
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', // Using a capable model for complex data consolidation
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a CV parsing specialist that merges information from multiple sources into a single comprehensive profile. Return ONLY valid JSON without any other text.'
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,  // Lower temperature for more consistent output
+        response_format: { type: "json_object" }
+      })
+    });
 
-      if (!openAIResponse.ok) {
-        const errorText = await openAIResponse.text();
-        console.error('OpenAI API error:', errorText);
-        return new Response(
-          JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const openAIData = await openAIResponse.json();
-      console.log("OpenAI response received");
-      
-      if (!openAIData.choices || openAIData.choices.length === 0) {
-        console.error("No response from OpenAI");
-        return new Response(
-          JSON.stringify({ error: 'No response generated from OpenAI' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      let unifiedCVData;
-      try {
-        // Parse the OpenAI response
-        unifiedCVData = JSON.parse(openAIData.choices[0].message.content);
-        console.log("Successfully processed unified CV data");
-      } catch (parseError) {
-        console.error('Error parsing OpenAI response as JSON:', parseError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to parse AI generated content as JSON',
-            rawContent: openAIData.choices[0].message.content
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API error:", errorText);
       return new Response(
-        JSON.stringify(unifiedCVData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (openAIError) {
-      console.error("OpenAI error:", openAIError);
-      return new Response(
-        JSON.stringify({ error: `Error processing request: ${openAIError.message}` }),
+        JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    const data = await response.json();
+    console.log("OpenAI response received");
+    
+    if (!data.choices || data.choices.length === 0) {
+      console.error("No content generated from OpenAI");
+      return new Response(
+        JSON.stringify({ error: "Failed to generate unified profile" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    let unifiedData;
+    try {
+      unifiedData = JSON.parse(data.choices[0].message.content);
+      console.log("Successfully processed unified CV data");
+    } catch (error) {
+      console.error("Error parsing OpenAI response as JSON:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to parse unified profile data" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify(unifiedData),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
   } catch (error) {
     console.error('Error in unify-cv-data function:', error);
     return new Response(
