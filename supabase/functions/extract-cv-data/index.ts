@@ -12,6 +12,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Set a default abort controller with a reasonable timeout
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), 55000); // 55 seconds timeout
+
   try {
     const { documentId, userId } = await req.json();
     
@@ -36,6 +40,7 @@ serve(async (req) => {
     // Check for existing extracted data
     const existingData = await checkExistingExtractedData(supabaseUrl, supabaseKey, documentId, userId);
     if (existingData) {
+      clearTimeout(timeoutId); // Clear timeout as we're returning cached data
       return new Response(
         JSON.stringify(existingData),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -45,6 +50,7 @@ serve(async (req) => {
     // Get document information
     const document = await getDocument(supabaseUrl, supabaseKey, documentId);
     if (!document) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ 
           error: 'Document not found in database. It may have been deleted.',
@@ -59,6 +65,7 @@ serve(async (req) => {
     // Generate signed URL for document download
     const signedURL = await getSignedURL(supabaseUrl, supabaseKey, document.filepath);
     if (!signedURL) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ 
           error: `Storage error: File may not exist in the storage bucket`,
@@ -73,6 +80,7 @@ serve(async (req) => {
       await downloadDocumentContent(signedURL, document);
     
     if (downloadError) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ 
           error: downloadError,
@@ -82,9 +90,10 @@ serve(async (req) => {
       );
     }
     
-    // Process with AI
-    const extractedData = await extractDataWithOpenAI(fileContentDescription);
+    // Process with AI using the abort signal
+    const extractedData = await extractDataWithOpenAI(fileContentDescription, abortController.signal);
     if (extractedData.error) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ 
           error: extractedData.error, 
@@ -94,12 +103,27 @@ serve(async (req) => {
       );
     }
     
+    clearTimeout(timeoutId); // Clear timeout as we're successful
     return new Response(
       JSON.stringify(extractedData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // Special handling for AbortError
+    if (error.name === 'AbortError') {
+      console.error('Function timed out after 55 seconds');
+      return new Response(
+        JSON.stringify({ 
+          error: 'The extraction process timed out. The file may be too large or complex.',
+          details: 'Server timeout after 55 seconds'
+        }),
+        { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     console.error('Error in extract-cv-data function:', error);
     return new Response(
       JSON.stringify({ 

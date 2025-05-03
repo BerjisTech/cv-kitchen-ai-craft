@@ -66,10 +66,6 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
         body: { 
           documentId, 
           userId: user.id 
-        },
-        // Add a reasonable timeout for the function call
-        options: {
-          timeout: 60000 // 60 seconds timeout
         }
       });
 
