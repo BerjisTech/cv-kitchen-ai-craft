@@ -17,6 +17,7 @@ import { CVViewer } from './components/kitchen/CVViewer';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
 import PublicProfile from './pages/PublicProfile';
+import LandingPage from './pages/LandingPage';
 import { Skeleton } from './components/ui/skeleton';
 
 // Create a client with default options
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60000, // 1 minute
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: false, // Critical: prevent refetching data when tab regains focus
       retry: 1,
     },
   },
@@ -35,18 +36,39 @@ const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
+  
+  // Store whether the app has been initialized to prevent redundant loading
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     setIsDarkMode(theme === 'dark');
   }, [theme]);
 
   useEffect(() => {
-    // Simulate initial loading and then hide the loader
-    const timer = setTimeout(() => {
+    // Only show loading screen on first load, not when switching tabs
+    if (!initialized) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+        setInitialized(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // If already initialized, don't show loading screen
       setLoading(false);
-    }, 1000);
+    }
+  }, [initialized]);
+  
+  // Prevent page refresh on visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Do nothing when visibility changes, preventing default refresh behavior
+    };
     
-    return () => clearTimeout(timer);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (loading) {
@@ -67,7 +89,7 @@ const App = () => {
           <BrowserRouter>
             <UserProvider>
               <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/u/:username" element={<PublicProfile />} />
