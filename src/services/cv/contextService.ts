@@ -12,18 +12,17 @@ export const getAllCVContext = async (): Promise<string[]> => {
     }
 
     // Fetch both CV documents and LinkedIn data if available
-    const [documentsResult, linkedInResult] = await Promise.all([
-      supabase
-        .from('user_documents')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('document_type', 'cv'),
-      supabase
-        .from('linkedin_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-    ]);
+    const documentsResult = await supabase
+      .from('user_documents')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('document_type', 'cv');
+      
+    const linkedInResult = await supabase
+      .from('linkedin_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
     
     // Process LinkedIn data - handle errors gracefully
     const linkedInProfiles = linkedInResult.error ? [] : linkedInResult.data ? [linkedInResult.data] : [];
@@ -37,9 +36,11 @@ export const getAllCVContext = async (): Promise<string[]> => {
     const documents = documentsResult.data;
     const contexts: string[] = [];
     
+    console.log(`Found ${documents.length} CV documents to process`);
+    
     for (const doc of documents) {
-      // Add document context
-      contexts.push(`CV Document: ${doc.filename}`);
+      // Add document context with more details
+      contexts.push(`CV Document: ${doc.filename} (ID: ${doc.id})`);
     }
     
     // Add LinkedIn context if available

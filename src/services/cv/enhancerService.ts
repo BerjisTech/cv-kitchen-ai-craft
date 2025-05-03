@@ -54,14 +54,18 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     
     for (const doc of documents) {
       try {
+        console.log(`Extracting data from CV: ${doc.filename} (ID: ${doc.id})`);
         // Get extracted data from Supabase Edge Function
         const extractedData = await extractCVData(doc.id);
         if (extractedData) {
+          console.log(`Successfully extracted data from ${doc.filename}:`, extractedData);
           allExtractedData.push(extractedData);
           
           // Convert extracted data to text format for AI prompt
           const textRepresentation = convertExtractedDataToText(extractedData, doc.filename);
           cvTexts.push(textRepresentation);
+        } else {
+          console.error(`Failed to extract data from ${doc.filename}`);
         }
       } catch (error) {
         console.error(`Error extracting data from document ${doc.id}:`, error);
@@ -70,6 +74,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     
     // Add LinkedIn data text if available
     if (linkedinData) {
+      console.log("Adding LinkedIn data to the mix");
       const linkedinText = convertLinkedInDataToText(linkedinData);
       if (linkedinText) {
         cvTexts.push(linkedinText);
@@ -298,6 +303,7 @@ Be sure to:
 - Write a comprehensive summary that highlights the person's experience, skills, and career focus
 - Format multi-paragraph text without line breaks (use spaces instead)
 - If data for a field is not available in ANY source, either omit the field or leave it as null/empty string
+- DO NOT generate placeholder or generic content - only use real data from the documents
 
 CV TEXTS:
 ${parsedText}

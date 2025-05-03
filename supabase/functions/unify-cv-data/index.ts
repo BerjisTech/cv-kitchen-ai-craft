@@ -49,11 +49,11 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are a CV parsing specialist that merges information from multiple sources into a single comprehensive profile. Return ONLY valid JSON without any other text.'
+            content: 'You are a CV parsing specialist that merges information from multiple sources into a single comprehensive profile. Return ONLY valid JSON without any other text. Use only actual data from the provided sources - do not invent or generate generic data where information is missing.'
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2,  // Lower temperature for more consistent output
+        temperature: 0.1,  // Lower temperature for more consistent output
         response_format: { type: "json_object" }
       })
     });
