@@ -63,6 +63,8 @@ export async function updateProfile(profileData: Partial<ProfileData>): Promise<
       updated_at: new Date().toISOString()
     };
     
+    console.log("Updating profile with data:", profileUpdateData);
+    
     // Update the profile
     const { data, error } = await supabase
       .from('profiles')
