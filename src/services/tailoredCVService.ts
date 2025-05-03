@@ -17,10 +17,16 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
       .from('job_analyses')
       .select('*')
       .eq('id', analysisId)
-      .single();
+      .maybeSingle();
       
-    if (analysisError || !analysis) {
+    if (analysisError) {
       console.error('Error retrieving analysis:', analysisError);
+      toast.error('Failed to retrieve job analysis');
+      throw new Error('Analysis not found');
+    }
+    
+    if (!analysis) {
+      toast.error('Job analysis not found');
       throw new Error('Analysis not found');
     }
     
@@ -28,8 +34,11 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
+      toast.error('You must be logged in to generate a CV');
       throw new Error('User not authenticated');
     }
+    
+    toast.info('Generating tailored CV... This may take a moment.');
     
     // Call the edge function to generate the CV
     const { data, error } = await supabase.functions.invoke('generate-tailored-cv', {
@@ -42,13 +51,22 @@ export const generateTailoredCV = async (jobDescription: string, analysisId: str
     
     if (error) {
       console.error('Error generating CV:', error);
+      toast.error('Failed to generate CV. Please try again.');
       throw error;
     }
     
+    if (!data) {
+      toast.error('No data returned from CV generator');
+      throw new Error('No data returned from CV generator');
+    }
+    
+    toast.success('CV has been generated successfully!');
+    
     // Return the CV data
-    return data;
+    return data as TailoredCV;
   } catch (error) {
     console.error('Error in generateTailoredCV:', error);
+    toast.error('Failed to generate CV');
     throw error;
   }
 };
@@ -101,7 +119,8 @@ export const checkForExistingCV = async (analysisId: string): Promise<TailoredCV
       .eq('analysis_id', analysisId)
       .maybeSingle();
       
-    if (error || !data) {
+    if (error) {
+      console.error('Error checking for existing CV:', error);
       return null;
     }
     
@@ -129,9 +148,11 @@ export const updateTailoredCV = async (cvId: string, template: string): Promise<
       
     if (error) {
       console.error('Error updating tailored CV:', error);
+      toast.error('Failed to update CV template');
       throw error;
     }
     
+    toast.success('CV template updated successfully');
     return data as TailoredCV;
   } catch (error) {
     console.error('Error in updateTailoredCV:', error);

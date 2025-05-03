@@ -28,19 +28,34 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get job analysis to ensure it exists
+    const { data: analysisData, error: analysisError } = await supabase
+      .from('job_analyses')
+      .select('*')
+      .eq('id', analysisId)
+      .maybeSingle();
+      
+    if (analysisError || !analysisData) {
+      console.error('Error retrieving analysis:', analysisError);
+      return new Response(
+        JSON.stringify({ error: 'Analysis not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get user profile data
     const { data: profileData } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     // Get LinkedIn data if available
     const { data: linkedinData } = await supabase
       .from('linkedin_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // Fetch existing CV documents
     const { data: documents } = await supabase
@@ -54,6 +69,14 @@ serve(async (req) => {
     
     // Call OpenAI API to generate tailored CV content
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    if (!openAIApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -75,28 +98,53 @@ serve(async (req) => {
     });
 
     if (!openAIResponse.ok) {
-      const error = await openAIResponse.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', errorText);
+      return new Response(
+        JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const openAIData = await openAIResponse.json();
-    const generatedCV = JSON.parse(openAIData.choices[0].message.content);
+    
+    if (!openAIData.choices || openAIData.choices.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No response generated from OpenAI' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    let generatedCV;
+    try {
+      generatedCV = JSON.parse(openAIData.choices[0].message.content);
+    } catch (parseError) {
+      console.error('Error parsing OpenAI response as JSON:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse AI generated content as JSON' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Store the generated CV
     const { data: cvData, error: cvError } = await supabase
       .from('tailored_cvs')
-      .insert({
+      .insert([{
         user_id: userId,
         analysis_id: analysisId,
         job_description: jobDescription,
         cv_content: generatedCV,
         template: 'modern',
-      })
+      }])
       .select()
-      .single();
+      .maybeSingle();
       
     if (cvError) {
-      throw new Error(`Failed to save generated CV: ${cvError.message}`);
+      console.error('Failed to save generated CV:', cvError);
+      return new Response(
+        JSON.stringify({ error: `Failed to save generated CV: ${cvError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
@@ -119,12 +167,14 @@ function createClient(supabaseUrl: string, supabaseKey: string) {
       select: (columns: string) => ({
         eq: (column: string, value: any) => ({
           single: () => fetchFromSupabase(supabaseUrl, supabaseKey, table, columns, column, value, true),
-          limit: (limit: number) => fetchFromSupabase(supabaseUrl, supabaseKey, table, columns, column, value, false, limit)
+          limit: (limit: number) => fetchFromSupabase(supabaseUrl, supabaseKey, table, columns, column, value, false, limit),
+          maybeSingle: () => fetchFromSupabase(supabaseUrl, supabaseKey, table, columns, column, value, true, 1, true)
         })
       }),
       insert: (data: any) => ({
         select: () => ({
-          single: () => insertIntoSupabase(supabaseUrl, supabaseKey, table, data)
+          single: () => insertIntoSupabase(supabaseUrl, supabaseKey, table, data),
+          maybeSingle: () => insertIntoSupabase(supabaseUrl, supabaseKey, table, data, true)
         })
       })
     })
@@ -139,7 +189,8 @@ async function fetchFromSupabase(
   filterColumn: string, 
   filterValue: any, 
   single = false, 
-  limit?: number
+  limit?: number,
+  maybeSingle = false
 ) {
   let endpoint = `${url}/rest/v1/${table}?select=${columns}&${filterColumn}=eq.${filterValue}`;
   
@@ -147,36 +198,70 @@ async function fetchFromSupabase(
     endpoint += `&limit=${limit}`;
   }
   
-  const response = await fetch(endpoint, {
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`
+  try {
+    const response = await fetch(endpoint, {
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error fetching from ${table}:`, errorText);
+      return { data: null, error: { message: errorText } };
     }
-  });
-  
-  const data = await response.json();
-  return { data: single ? data[0] : data };
+    
+    const data = await response.json();
+    
+    if (single && !maybeSingle && data.length === 0) {
+      return { data: null, error: { message: 'No record found' } };
+    }
+    
+    return { 
+      data: single ? (data.length > 0 ? data[0] : null) : data,
+      error: null 
+    };
+  } catch (error) {
+    console.error(`Error in fetchFromSupabase for ${table}:`, error);
+    return { data: null, error };
+  }
 }
 
-async function insertIntoSupabase(url: string, key: string, table: string, data: any) {
-  const response = await fetch(`${url}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
-    body: JSON.stringify(data)
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    return { error: { message: JSON.stringify(errorData) } };
+async function insertIntoSupabase(
+  url: string, 
+  key: string, 
+  table: string, 
+  data: any,
+  maybeSingle = false
+) {
+  try {
+    const response = await fetch(`${url}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: Array.isArray(data) ? JSON.stringify(data) : JSON.stringify([data])
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`Error inserting into ${table}:`, errorData);
+      return { error: { message: JSON.stringify(errorData) } };
+    }
+    
+    const responseData = await response.json();
+    return { 
+      data: maybeSingle ? responseData[0] : responseData, 
+      error: null 
+    };
+  } catch (error) {
+    console.error(`Error in insertIntoSupabase for ${table}:`, error);
+    return { data: null, error };
   }
-  
-  const responseData = await response.json();
-  return { data: responseData[0], error: null };
 }
 
 function generatePromptForCV(
