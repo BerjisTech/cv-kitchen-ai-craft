@@ -8,9 +8,10 @@ import { ProfileData } from '@/services/profileService';
 
 interface ProfileContactProps {
   profile: ProfileData | null;
+  isPublic?: boolean;
 }
 
-export const ProfileContact: React.FC<ProfileContactProps> = ({ profile }) => {
+export const ProfileContact: React.FC<ProfileContactProps> = ({ profile, isPublic = false }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card className="glass-card">
@@ -49,33 +50,35 @@ export const ProfileContact: React.FC<ProfileContactProps> = ({ profile }) => {
         </CardContent>
       </Card>
       
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>Send a Message</CardTitle>
-          <CardDescription>I'll get back to you as soon as possible</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4">
-            <div>
-              <Input placeholder="Your Name" />
-            </div>
-            <div>
-              <Input type="email" placeholder="Your Email" />
-            </div>
-            <div>
-              <Input placeholder="Subject" />
-            </div>
-            <div>
-              <textarea 
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                rows={4}
-                placeholder="Your Message"
-              ></textarea>
-            </div>
-            <Button className="w-full">Send Message</Button>
-          </form>
-        </CardContent>
-      </Card>
+      {!isPublic && (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Send a Message</CardTitle>
+            <CardDescription>I'll get back to you as soon as possible</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4">
+              <div>
+                <Input placeholder="Your Name" />
+              </div>
+              <div>
+                <Input type="email" placeholder="Your Email" />
+              </div>
+              <div>
+                <Input placeholder="Subject" />
+              </div>
+              <div>
+                <textarea 
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  rows={4}
+                  placeholder="Your Message"
+                ></textarea>
+              </div>
+              <Button className="w-full">Send Message</Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

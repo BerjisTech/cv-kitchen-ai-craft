@@ -5,9 +5,10 @@ import { ProfileData } from '@/services/profileService';
 
 interface ProfileAboutProps {
   profile: ProfileData | null;
+  isPublic?: boolean;
 }
 
-export const ProfileAbout: React.FC<ProfileAboutProps> = ({ profile }) => {
+export const ProfileAbout: React.FC<ProfileAboutProps> = ({ profile, isPublic = false }) => {
   if (!profile) return null;
   
   return (

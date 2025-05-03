@@ -108,11 +108,23 @@ const Settings = () => {
         full_name: data.full_name,
         username: data.username || null,
         bio: data.bio || null,
-        phone: data.phone,
-        location: data.location
+        location: data.location || null,
+        phone: data.phone
       });
       // Update the local profile state
-      setProfile(prev => prev ? { ...prev, ...data } : null);
+      setProfile(prev => prev ? { 
+        ...prev, 
+        full_name: data.full_name,
+        username: data.username || null,
+        bio: data.bio || null,
+        location: data.location || null,
+        phone: data.phone 
+      } : null);
+      
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -124,7 +136,13 @@ const Settings = () => {
       const success = await updatePassword(data.currentPassword, data.newPassword);
       if (success) {
         passwordForm.reset();
+        toast.success("Password updated successfully");
+      } else {
+        toast.error("Failed to update password");
       }
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast.error("Failed to update password");
     } finally {
       setIsChangingPassword(false);
     }

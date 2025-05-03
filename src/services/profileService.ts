@@ -12,6 +12,8 @@ export interface ProfileData {
   role?: string;
   created_at?: string;
   updated_at?: string;
+  email?: string;
+  phone?: string;
 }
 
 export async function getProfile(): Promise<ProfileData | null> {
@@ -33,7 +35,11 @@ export async function getProfile(): Promise<ProfileData | null> {
       return null;
     }
     
-    return data as ProfileData;
+    // Include email from auth.user
+    return { 
+      ...data as ProfileData, 
+      email: user.email
+    };
   } catch (error) {
     console.error("Error in getProfile:", error);
     return null;
@@ -48,8 +54,8 @@ export async function updateProfile(profileData: Partial<ProfileData>): Promise<
       throw new Error('Not authenticated');
     }
     
-    // Remove id from update data if it exists
-    const { id, ...updateData } = profileData;
+    // Remove id, email from update data if it exists as they're not in the profiles table
+    const { id, email, phone, ...updateData } = profileData;
     
     const { data, error } = await supabase
       .from('profiles')
@@ -66,7 +72,12 @@ export async function updateProfile(profileData: Partial<ProfileData>): Promise<
       throw error;
     }
     
-    return data as ProfileData;
+    // Include email from auth.user in the returned profile data
+    return { 
+      ...data as ProfileData, 
+      email: user.email,
+      phone: profileData.phone
+    };
   } catch (error) {
     console.error("Error in updateProfile:", error);
     throw error;
@@ -90,5 +101,23 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
   } catch (error) {
     console.error("Error in getProfileByUsername:", error);
     return null;
+  }
+}
+
+export async function updatePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      console.error("Error updating password:", error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error in updatePassword:", error);
+    return false;
   }
 }

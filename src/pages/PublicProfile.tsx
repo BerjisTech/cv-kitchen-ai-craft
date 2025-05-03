@@ -91,7 +91,7 @@ const PublicProfile = () => {
               </TabsContent>
             </Tabs>
             
-            <ProfilePortfolio />
+            <ProfilePortfolio profile={profile} />
           </div>
           
           <div>
