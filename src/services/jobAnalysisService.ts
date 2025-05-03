@@ -1,5 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { getAllCVContext } from "./cvDataExtractorService";
 
 export interface JobAnalysis {
   id: string;
@@ -7,9 +9,11 @@ export interface JobAnalysis {
   job_description: string;
   analysis: string;
   created_at: string;
+  updated_at: string;
+  has_cv?: boolean;
 }
 
-export async function analyzeJobDescription(jobDescription: string): Promise<{ analysis: string; id: string } | null> {
+export async function analyzeJobDescription(description: string): Promise<JobAnalysis | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -18,26 +22,66 @@ export async function analyzeJobDescription(jobDescription: string): Promise<{ a
       return null;
     }
     
-    console.log("Calling analyze-job-description function with user ID:", user.id);
+    // Get all CV context for analysis
+    const cvContext = await getAllCVContext();
     
-    const { data, error } = await supabase.functions.invoke('analyze-job-description', {
-      body: {
-        jobDescription,
-        userId: user.id,
-      },
-    });
+    toast.loading("Analyzing job description...", { id: "job-analysis" });
+    
+    let result: any;
+    let error: any;
+    
+    try {
+      // Call the edge function to analyze the job description
+      const response = await supabase.functions.invoke('analyze-job-description', {
+        body: {
+          jobDescription: description,
+          userId: user.id,
+          cvContext: cvContext
+        }
+      });
+      
+      result = response.data;
+      error = response.error;
+    } catch (err) {
+      console.error("Error calling analyze-job-description function:", err);
+      error = err;
+    }
     
     if (error) {
       console.error("Error analyzing job description:", error);
-      toast.error("Failed to analyze job description");
-      return null;
+      toast.error("Failed to analyze job description", { id: "job-analysis" });
+      throw error;
     }
     
-    return data;
+    if (!result || !result.analysis) {
+      toast.error("Failed to generate analysis", { id: "job-analysis" });
+      throw new Error("No analysis generated");
+    }
+    
+    // Save the analysis to the database
+    const { data, error: dbError } = await supabase
+      .from('job_analyses')
+      .insert({
+        user_id: user.id,
+        job_description: description,
+        analysis: result.analysis
+      })
+      .select('*')
+      .single();
+    
+    if (dbError) {
+      console.error("Error saving job analysis:", dbError);
+      toast.error("Failed to save analysis", { id: "job-analysis" });
+      throw dbError;
+    }
+    
+    toast.success("Job description analyzed successfully", { id: "job-analysis" });
+    return data as JobAnalysis;
+    
   } catch (error: any) {
-    console.error("Error in job analysis service:", error);
-    toast.error("An error occurred during analysis");
-    return null;
+    console.error("Error in analyzeJobDescription:", error);
+    toast.error("An error occurred during analysis", { id: "job-analysis" });
+    throw error;
   }
 }
 
@@ -45,10 +89,13 @@ export async function getRecentAnalyses(): Promise<JobAnalysis[]> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) return [];
+    if (!user) {
+      console.log("User not authenticated");
+      return [];
+    }
     
-    // Using explicit type casting to fix the type issues
-    const { data, error } = await supabase
+    // First get the analyses
+    const { data: analyses, error } = await supabase
       .from('job_analyses')
       .select('*')
       .eq('user_id', user.id)
@@ -56,20 +103,37 @@ export async function getRecentAnalyses(): Promise<JobAnalysis[]> {
       .limit(5);
     
     if (error) {
-      console.error("Error fetching recent analyses:", error);
+      console.error("Error fetching job analyses:", error);
       return [];
     }
     
-    return data as JobAnalysis[];
-  } catch (error: any) {
-    console.error("Error fetching recent analyses:", error);
+    // For each analysis, check if a CV exists for it
+    const analysesWithCVFlag = await Promise.all(analyses.map(async (analysis) => {
+      const { data: cvs, error: cvError } = await supabase
+        .from('tailored_cvs')
+        .select('id')
+        .eq('analysis_id', analysis.id)
+        .limit(1);
+      
+      if (cvError) {
+        console.error(`Error checking CV for analysis ${analysis.id}:`, cvError);
+      }
+      
+      return {
+        ...analysis,
+        has_cv: cvs && cvs.length > 0
+      };
+    }));
+    
+    return analysesWithCVFlag as JobAnalysis[];
+  } catch (error) {
+    console.error("Error in getRecentAnalyses:", error);
     return [];
   }
 }
 
 export async function getAnalysisById(id: string): Promise<JobAnalysis | null> {
   try {
-    // Using explicit type casting to fix the type issues
     const { data, error } = await supabase
       .from('job_analyses')
       .select('*')
@@ -77,40 +141,28 @@ export async function getAnalysisById(id: string): Promise<JobAnalysis | null> {
       .single();
     
     if (error) {
-      console.error("Error fetching analysis:", error);
+      console.error("Error fetching job analysis:", error);
       return null;
     }
     
-    return data as JobAnalysis;
-  } catch (error: any) {
-    console.error("Error fetching analysis:", error);
-    return null;
-  }
-}
-
-export async function deleteAnalysis(id: string): Promise<boolean> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Check if a CV exists for this analysis
+    const { data: cvs, error: cvError } = await supabase
+      .from('tailored_cvs')
+      .select('id')
+      .eq('analysis_id', id)
+      .limit(1);
     
-    if (!user) return false;
-    
-    const { error } = await supabase
-      .from('job_analyses')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
-    
-    if (error) {
-      console.error("Error deleting analysis:", error);
-      toast.error("Failed to delete analysis");
-      return false;
+    if (cvError) {
+      console.error(`Error checking CV for analysis ${id}:`, cvError);
     }
     
-    toast.success("Analysis deleted successfully");
-    return true;
-  } catch (error: any) {
-    console.error("Error deleting analysis:", error);
-    toast.error("Failed to delete analysis");
-    return false;
+    return {
+      ...data,
+      has_cv: cvs && cvs.length > 0
+    } as JobAnalysis;
+    
+  } catch (error) {
+    console.error("Error in getAnalysisById:", error);
+    return null;
   }
 }

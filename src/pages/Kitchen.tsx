@@ -8,15 +8,19 @@ import { RecentAnalysesList } from '@/components/kitchen/RecentAnalysesList';
 import { ConnectionOptions } from '@/components/kitchen/ConnectionOptions';
 import { CareerIngredientsSection } from '@/components/kitchen/CareerIngredientsSection';
 import { DocumentsGrid } from '@/components/kitchen/DocumentsGrid';
+import { CVDocumentsList } from '@/components/kitchen/CVDocumentsList';
 import { LinkedInImport } from '@/components/kitchen/LinkedInImport';
 import { useAuth } from '@/context/AuthContext';
 import { getUserConnections } from '@/services/socialConnectionService';
 import { getUserDocuments, UserDocument } from '@/services/documentService';
 import { getRecentAnalyses, getAnalysisById, JobAnalysis } from '@/services/jobAnalysisService';
 import { toast } from '@/components/ui/sonner';
+import { updateProfileWithCVData, extractCVData } from '@/services/cvDataExtractorService';
+import { Button } from '@/components/ui/button';
 
 const Kitchen = () => {
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
+  const [cvDocuments, setCVDocuments] = useState<UserDocument[]>([]);
   const [socialConnections, setSocialConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recentAnalyses, setRecentAnalyses] = useState<JobAnalysis[]>([]);
@@ -28,11 +32,15 @@ const Kitchen = () => {
       if (user) {
         setIsLoading(true);
         try {
-          const docs = await getUserDocuments('cv');
+          // Get all documents
+          const docs = await getUserDocuments();
+          const cvDocs = docs.filter(doc => doc.document_type === 'cv');
+          
           const connections = await getUserConnections();
           const analyses = await getRecentAnalyses();
           
           setUserDocuments(docs);
+          setCVDocuments(cvDocs);
           setSocialConnections(connections);
           setRecentAnalyses(analyses);
         } catch (error) {
@@ -47,10 +55,13 @@ const Kitchen = () => {
     fetchUserData();
   }, [user]);
   
-  const handleUpload = (files: FileList) => {
+  const handleUpload = async (files: FileList) => {
     console.log('Upload handled by FileUploader component');
-    // We'll refresh the documents list after upload
-    getUserDocuments('cv').then(docs => setUserDocuments(docs));
+    // Refresh the documents list after upload
+    const docs = await getUserDocuments();
+    const cvDocs = docs.filter(doc => doc.document_type === 'cv');
+    setUserDocuments(docs);
+    setCVDocuments(cvDocs);
   };
 
   const handleViewAnalysis = async (id: string) => {
@@ -84,6 +95,23 @@ const Kitchen = () => {
   
   const handleDocumentDeleted = (id: string) => {
     setUserDocuments(userDocuments.filter(doc => doc.id !== id));
+    setCVDocuments(cvDocuments.filter(doc => doc.id !== id));
+  };
+  
+  const handleExtractCVData = async (documentId: string) => {
+    try {
+      toast.info("Extracting data from CV...");
+      const cvData = await extractCVData(documentId);
+      if (cvData) {
+        const success = await updateProfileWithCVData(cvData);
+        if (success) {
+          toast.success("Profile updated with CV data");
+        }
+      }
+    } catch (error) {
+      console.error("Error extracting CV data:", error);
+      toast.error("Failed to extract data from CV");
+    }
   };
   
   const hasLinkedInConnection = socialConnections.some(conn => conn.provider === 'linkedin');
@@ -103,7 +131,16 @@ const Kitchen = () => {
         {/* Main Upload Area */}
         <FileUploader onUpload={handleUpload} />
         
-        {/* User CV Display */}
+        {/* CV Documents List - NEW SECTION */}
+        {cvDocuments.length > 0 && (
+          <CVDocumentsList 
+            documents={cvDocuments}
+            onDocumentDeleted={handleDocumentDeleted}
+            onExtractData={handleExtractCVData}
+          />
+        )}
+        
+        {/* User Documents Display */}
         <DocumentsGrid 
           documents={userDocuments} 
           onDocumentDeleted={handleDocumentDeleted} 

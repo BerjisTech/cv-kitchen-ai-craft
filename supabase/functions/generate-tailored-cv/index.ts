@@ -120,6 +120,34 @@ serve(async (req) => {
       documents = await documentsResponse.json();
     }
 
+    // Extract job title and company from the job description for naming the CV
+    let jobTitle = "CV";
+    let companyName = "";
+    
+    // Simple extraction of job title and company name from the job description
+    // In a real implementation, we'd use AI to extract these more accurately
+    try {
+      const jobTitleMatch = jobDescription.match(/(?:job title|position|role|opening for)[:\s]+([^\n.]+)/i);
+      if (jobTitleMatch && jobTitleMatch[1]) {
+        jobTitle = jobTitleMatch[1].trim();
+      }
+      
+      const companyMatch = jobDescription.match(/(?:company|organization|firm|employer)[:\s]+([^\n.]+)/i);
+      if (companyMatch && companyMatch[1]) {
+        companyName = companyMatch[1].trim();
+      }
+    } catch (extractError) {
+      console.error("Error extracting job details for naming:", extractError);
+    }
+    
+    // If we couldn't extract a meaningful title, use generic naming
+    if (jobTitle === "CV" || jobTitle.length > 50) {
+      jobTitle = "Tailored CV";
+    }
+    
+    // Combine title and company if available
+    const cvTitle = companyName ? `${jobTitle} - ${companyName}` : jobTitle;
+
     // Prepare the prompt with all available user data
     const prompt = generatePromptForCV(jobDescription, profileData, linkedinData, documents);
     
@@ -177,6 +205,9 @@ serve(async (req) => {
       let generatedCV;
       try {
         generatedCV = JSON.parse(openAIData.choices[0].message.content);
+        
+        // Add title to the CV content based on job description
+        generatedCV.title = cvTitle;
       } catch (parseError) {
         console.error('Error parsing OpenAI response as JSON:', parseError);
         return new Response(
