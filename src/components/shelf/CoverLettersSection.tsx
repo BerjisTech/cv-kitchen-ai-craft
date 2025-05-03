@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, Eye, Edit, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CoverLettersSectionProps {
@@ -73,3 +73,4 @@ export const CoverLettersSection: React.FC<CoverLettersSectionProps> = ({
     </div>
   );
 };
+
