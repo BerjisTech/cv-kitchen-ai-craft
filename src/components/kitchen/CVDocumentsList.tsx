@@ -8,6 +8,12 @@ import { deleteDocument } from '@/services/documentService';
 import { toast } from '@/components/ui/sonner';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
 
 interface CVDocumentsListProps {
   documents: UserDocument[];
@@ -97,27 +103,51 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-4 ml-auto">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleExtractData(doc.id)}
-                  disabled={processingDocs[doc.id]}
-                >
-                  <RefreshCw size={18} className={processingDocs[doc.id] ? 'animate-spin' : ''} />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDelete(doc.id)}
-                  disabled={deletingDocs[doc.id]}
-                >
-                  <Trash2 size={18} />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleExtractData(doc.id)}
+                        disabled={processingDocs[doc.id]}
+                      >
+                        <RefreshCw size={18} className={processingDocs[doc.id] ? 'animate-spin' : ''} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Extract data from this CV to update your profile</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDelete(doc.id)}
+                        disabled={deletingDocs[doc.id]}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete this CV</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </Card>
           ))
         )}
       </div>
+      {documents.length > 0 && (
+        <div className="mt-3 text-sm text-muted-foreground">
+          <p>Click the <RefreshCw className="inline h-3 w-3" /> button to extract data from your CV and update your profile info, skills, and experience.</p>
+        </div>
+      )}
     </div>
   );
 };

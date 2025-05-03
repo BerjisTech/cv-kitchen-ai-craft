@@ -88,6 +88,21 @@ serve(async (req) => {
     }
     
     const { signedURL } = await storageResponse.json();
+    console.log("Got signed URL for document:", signedURL);
+    
+    // Download the document content
+    const fileResponse = await fetch(signedURL);
+    if (!fileResponse.ok) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to download document content' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Get file content as text or blob depending on the file type
+    const fileContent = document.file_type.includes('pdf') 
+      ? await fileResponse.blob()
+      : await fileResponse.text();
     
     // Use OpenAI to extract data from the CV
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -99,56 +114,198 @@ serve(async (req) => {
       );
     }
     
-    // For now, we'll just return a mock response
-    // In a real implementation, you'd use OpenAI to analyze the document
-    // and extract the relevant information
+    console.log("Calling OpenAI to extract CV data...");
     
-    const mockCVData = {
-      fullName: "John Smith",
-      title: "Senior Frontend Developer",
-      contact: {
-        email: "john.smith@example.com",
-        phone: "+1 (555) 123-4567",
-        location: "San Francisco, CA",
-        website: "johnsmith.dev"
-      },
-      summary: "Experienced frontend developer with 5+ years of experience building modern web applications using React, TypeScript, and related technologies.",
-      skills: ["React", "TypeScript", "JavaScript", "HTML", "CSS", "Tailwind CSS", "Node.js", "GraphQL"],
-      experience: [
-        {
-          company: "Tech Solutions Inc.",
-          role: "Senior Frontend Developer",
-          start: "2021-01",
-          end: "Present",
-          description: "Lead frontend development for multiple client projects using React and TypeScript."
+    // For PDFs, we'd need additional processing (potentially through a PDF parsing library)
+    // For now, we'll handle text content (like plain text or assuming we've extracted text from a PDF)
+    const textContent = document.file_type.includes('pdf')
+      ? `[This is a PDF file named ${document.filename}]` // In a real implementation, we'd extract text from the PDF
+      : fileContent;
+    
+    // Create a prompt for OpenAI to extract structured data from the CV text
+    const prompt = `
+      Extract structured data from this CV/resume:
+      
+      ${textContent.substring(0, 15000)} ${textContent.length > 15000 ? '... [truncated]' : ''}
+      
+      Return a JSON object with the following structure:
+      {
+        "fullName": "person's full name",
+        "title": "professional title/role",
+        "contact": {
+          "email": "email address",
+          "phone": "phone number",
+          "location": "city, country or region",
+          "website": "personal website or portfolio URL",
+          "linkedin": "LinkedIn profile URL",
+          "github": "GitHub profile URL"
         },
-        {
-          company: "Web Innovations LLC",
-          role: "Frontend Developer",
-          start: "2018-03",
-          end: "2020-12",
-          description: "Developed and maintained web applications for various clients."
-        }
-      ],
-      education: [
-        {
-          school: "University of Technology",
-          degree: "Bachelor of Science in Computer Science",
-          start: "2014",
-          end: "2018",
-          description: "Graduated with honors. Specialized in web development."
-        }
-      ]
-    };
+        "summary": "professional summary or objective",
+        "skills": ["skill1", "skill2", ...],
+        "experience": [
+          {
+            "company": "company name",
+            "role": "job title",
+            "start": "start date (YYYY-MM format)",
+            "end": "end date (YYYY-MM format) or 'Present'",
+            "description": "job responsibilities and achievements"
+          },
+          ...
+        ],
+        "education": [
+          {
+            "school": "institution name",
+            "degree": "degree name",
+            "start": "start year",
+            "end": "end year or 'Present'",
+            "description": "additional information about the education"
+          },
+          ...
+        ],
+        "languages": [
+          {
+            "language": "language name",
+            "proficiency": "proficiency level"
+          },
+          ...
+        ],
+        "certifications": [
+          {
+            "name": "certification name",
+            "issuer": "issuing organization",
+            "date": "date obtained"
+          },
+          ...
+        ]
+      }
+      
+      If any field can't be determined from the CV, use null or an empty array as appropriate. Ensure the output is valid JSON.
+    `;
     
-    // In a real implementation:
-    // 1. Download the file from signedURL
-    // 2. Convert the file to text (if PDF) or extract content
-    // 3. Use OpenAI to analyze the content and extract structured data
-    // 4. Return the structured data
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a CV parsing assistant that extracts structured information from resumes and CVs. Return ONLY valid JSON without any other text.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      })
+    });
+    
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error("OpenAI API error:", errorText);
+      return new Response(
+        JSON.stringify({ error: `Failed to extract data from CV: API error` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const openAIData = await openAIResponse.json();
+    console.log("OpenAI response received");
+    
+    if (!openAIData.choices || openAIData.choices.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to extract data from CV: No content generated' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    let extractedData;
+    try {
+      extractedData = JSON.parse(openAIData.choices[0].message.content);
+      console.log("Successfully extracted CV data");
+    } catch (error) {
+      console.error("Error parsing OpenAI response as JSON:", error);
+      console.error("Response content:", openAIData.choices[0].message.content);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse extracted CV data as JSON' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Store the extracted data in a dedicated table for future use
+    try {
+      // Check if entry exists for this user and document
+      const existingDataResponse = await fetch(
+        `${supabaseUrl}/rest/v1/cv_extracted_data?user_id=eq.${userId}&document_id=eq.${documentId}`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      const existingData = await existingDataResponse.json();
+      let dbResult;
+      
+      if (existingData && existingData.length > 0) {
+        // Update existing record
+        dbResult = await fetch(
+          `${supabaseUrl}/rest/v1/cv_extracted_data?id=eq.${existingData[0].id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              extracted_data: extractedData,
+              updated_at: new Date().toISOString()
+            })
+          }
+        );
+      } else {
+        // Create new record
+        dbResult = await fetch(
+          `${supabaseUrl}/rest/v1/cv_extracted_data`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              document_id: documentId,
+              extracted_data: extractedData,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+          }
+        );
+      }
+      
+      if (!dbResult.ok) {
+        const errorText = await dbResult.text();
+        console.error("Error saving extracted data to database:", errorText);
+        // Continue processing even if saving to DB failed
+      } else {
+        console.log("Successfully saved extracted data to database");
+      }
+    } catch (dbError) {
+      console.error("Error handling database operations:", dbError);
+      // Continue even if DB operations failed
+    }
 
     return new Response(
-      JSON.stringify(mockCVData),
+      JSON.stringify(extractedData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
