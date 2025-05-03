@@ -14,7 +14,7 @@ export async function getAllCVContext(): Promise<string> {
       return "";
     }
     
-    // Get the user's CV data from extracted_data
+    // Get the user's CV data from extracted_data - using array syntax and limit(1) to avoid multiple rows error
     const { data: cvData, error: cvError } = await supabase
       .from('cv_extracted_data')
       .select('extracted_data')
