@@ -26,6 +26,7 @@ export async function getDocument(supabaseUrl: string, supabaseKey: string, docu
     const documents = await documentResponse.json();
     
     if (!documents || documents.length === 0) {
+      console.error("Document not found with ID:", documentId);
       return null;
     }
     
@@ -82,12 +83,13 @@ export async function getSignedURL(supabaseUrl: string, supabaseKey: string, fil
  */
 export async function downloadDocumentContent(fullSignedUrl: string, document: any) {
   try {
+    console.log("Attempting to download from URL:", fullSignedUrl);
     const fileResponse = await fetch(fullSignedUrl);
     
     if (!fileResponse.ok) {
       console.error("Failed to download document content, status:", fileResponse.status);
       return {
-        error: `Failed to download document: the file seems to be inaccessible`,
+        error: `Failed to access document: the file may have been deleted or permissions changed (HTTP ${fileResponse.status})`,
         fileContent: null,
         fileContentDescription: null
       };
@@ -143,9 +145,9 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
       }
     }
   } catch (fileError) {
-    console.error("Error reading document content:", fileError);
+    console.error("Error accessing document content:", fileError);
     return {
-      error: `Failed to read document content: ${fileError.message}`,
+      error: `Failed to access document: ${fileError.message}`,
       fileContent: null,
       fileContentDescription: null
     };

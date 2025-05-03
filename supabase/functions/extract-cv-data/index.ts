@@ -46,7 +46,10 @@ serve(async (req) => {
     const document = await getDocument(supabaseUrl, supabaseKey, documentId);
     if (!document) {
       return new Response(
-        JSON.stringify({ error: 'Document not found in database' }),
+        JSON.stringify({ 
+          error: 'Document not found in database. It may have been deleted.',
+          documentId
+        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -99,7 +102,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in extract-cv-data function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'An unexpected error occurred',
+        details: error.stack || 'No stack trace available'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

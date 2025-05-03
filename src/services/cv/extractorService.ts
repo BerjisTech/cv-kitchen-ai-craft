@@ -67,6 +67,10 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
           documentId, 
           userId: user.id 
         },
+        // Add a reasonable timeout for the function call
+        options: {
+          timeout: 60000 // 60 seconds timeout
+        }
       });
 
       if (error) {
@@ -109,12 +113,25 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       }
       
       return data;
-    } catch (functionError) {
+    } catch (functionError: any) {
       console.error("Error in extractCVData function call:", functionError);
-      toast.error(`Failed to process ${document?.filename || 'document'}. The file may be inaccessible.`);
+      let errorMessage = "Failed to process document.";
+      
+      // Extract more detailed error message if available
+      if (functionError.message) {
+        if (functionError.message.includes("404")) {
+          errorMessage = `The file "${document?.filename}" could not be found in storage.`;
+        } else if (functionError.message.includes("403")) {
+          errorMessage = "You don't have permission to access this file.";
+        } else if (functionError.message.includes("timeout")) {
+          errorMessage = "The extraction process timed out. The file may be too large or complex.";
+        }
+      }
+      
+      toast.error(errorMessage);
       return null;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in extractCVData:', error);
     toast.error(`Failed to extract CV data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return null;
