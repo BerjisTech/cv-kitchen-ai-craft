@@ -8,6 +8,7 @@ import type { ExtractedCVData } from './types';
  */
 export const extractCVData = async (documentId: string): Promise<ExtractedCVData | null> => {
   try {
+    // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error("You must be logged in to extract CV data");
@@ -44,25 +45,40 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
       }
     }
 
-    console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
-    toast.info("Extracting data from CV...", { duration: 2000 });
-    
     // Get the document details to pass to the toast if extraction fails
     const { data: document } = await supabase
       .from('user_documents')
-      .select('filename')
+      .select('filename, filepath')
       .eq('id', documentId)
       .single();
+    
+    if (!document) {
+      toast.error("Document not found. It may have been deleted.");
+      return null;
+    }
+
+    console.log(`Extracting data from CV document ${documentId} for user ${user.id}`);
+    toast.info("Extracting data from CV...", { duration: 3000 });
     
     try {
       // Call the Edge Function to extract data from the CV
       const { data, error } = await supabase.functions.invoke('extract-cv-data', {
-        body: { documentId, userId: user.id },
+        body: { 
+          documentId, 
+          userId: user.id 
+        },
       });
 
       if (error) {
         console.error("Error calling extract-cv-data function:", error);
-        toast.error(`Failed to extract data from ${document?.filename || 'document'}. Please try again later.`);
+        
+        // Provide more detailed error feedback
+        if (error.message.includes('422')) {
+          toast.error(`The document "${document?.filename || 'file'}" could not be processed. It might be inaccessible or in an unsupported format.`);
+        } else {
+          toast.error(`Failed to extract data from ${document?.filename || 'document'}. Please try again later.`);
+        }
+        
         return null;
       }
 

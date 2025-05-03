@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FileText, Trash2, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   const [deletingDocs, setDeletingDocs] = useState<{ [key: string]: boolean }>({});
   const [processingAllDocs, setProcessingAllDocs] = useState(false);
   const [enhancingProfile, setEnhancingProfile] = useState(false);
+  const [retryAttempts, setRetryAttempts] = useState<{ [key: string]: number }>({});
   
   const handleDelete = async (id: string) => {
     setDeletingDocs(prev => ({ ...prev, [id]: true }));
@@ -48,15 +48,36 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     }
   };
   
-  const handleExtractData = async (id: string) => {
+  const handleExtractData = async (id: string, isRetry = false) => {
     setProcessingDocs(prev => ({ ...prev, [id]: true }));
+    
     try {
-      toast.info('Extracting data from CV, please wait...');
+      if (!isRetry) {
+        toast.info('Extracting data from CV, please wait...');
+      } else {
+        toast.info('Retrying extraction, please wait...');
+      }
+      
       await onExtractData(id);
+      
+      // Reset retry counter on success
+      setRetryAttempts(prev => ({ ...prev, [id]: 0 }));
       toast.success('CV data extracted successfully! Your profile has been updated.');
     } catch (error) {
       console.error('Error extracting data:', error);
-      toast.error('Failed to extract data from CV');
+      
+      // Increment retry counter for this document
+      const currentRetries = retryAttempts[id] || 0;
+      setRetryAttempts(prev => ({ ...prev, [id]: currentRetries + 1 }));
+      
+      // Only allow up to 2 automatic retries
+      if (currentRetries < 2) {
+        toast.error(`Extraction failed, automatically retrying (attempt ${currentRetries + 1}/3)...`);
+        // Wait a moment before retrying
+        setTimeout(() => handleExtractData(id, true), 2000); 
+      } else {
+        toast.error('Failed to extract data from CV after multiple attempts.');
+      }
     } finally {
       setProcessingDocs(prev => ({ ...prev, [id]: false }));
     }
