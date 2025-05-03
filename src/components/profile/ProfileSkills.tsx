@@ -44,24 +44,32 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
       
       setIsLoading(true);
       try {
-        // Fetch skills
-        const { data: skillsData } = await supabase
-          .from('user_skills')
+        // Fetch skills - use any type to bypass TypeScript checking since the table was recently created
+        const { data: skillsData, error: skillsError } = await supabase
+          .from('user_skills' as any)
           .select('*')
           .eq('user_id', profile.id);
+          
+        if (skillsError) {
+          console.error("Error fetching skills:", skillsError);
+        }
           
         if (skillsData) {
-          setSkills(skillsData);
+          setSkills(skillsData as UserSkill[]);
         }
         
-        // Fetch languages
-        const { data: languagesData } = await supabase
-          .from('user_languages')
+        // Fetch languages - use any type to bypass TypeScript checking since the table was recently created
+        const { data: languagesData, error: languagesError } = await supabase
+          .from('user_languages' as any)
           .select('*')
           .eq('user_id', profile.id);
           
+        if (languagesError) {
+          console.error("Error fetching languages:", languagesError);
+        }
+          
         if (languagesData && languagesData.length > 0) {
-          setLanguages(languagesData);
+          setLanguages(languagesData as UserLanguage[]);
         } else {
           // Default sample languages if none are found
           setLanguages([
@@ -70,14 +78,18 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           ]);
         }
         
-        // Fetch certifications
-        const { data: certificationsData } = await supabase
-          .from('user_certifications')
+        // Fetch certifications - use any type to bypass TypeScript checking since the table was recently created
+        const { data: certificationsData, error: certificationsError } = await supabase
+          .from('user_certifications' as any)
           .select('*')
           .eq('user_id', profile.id);
           
+        if (certificationsError) {
+          console.error("Error fetching certifications:", certificationsError);
+        }
+          
         if (certificationsData && certificationsData.length > 0) {
-          setCertifications(certificationsData);
+          setCertifications(certificationsData as UserCertification[]);
         } else {
           // Default sample certifications if none are found
           setCertifications([

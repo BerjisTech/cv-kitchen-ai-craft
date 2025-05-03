@@ -9,6 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cv_extracted_data: {
+        Row: {
+          created_at: string
+          document_id: string
+          extracted_data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          extracted_data: Json
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          extracted_data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cv_extracted_data_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "user_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_analyses: {
         Row: {
           analysis: string
@@ -152,6 +187,33 @@ export type Database = {
           },
         ]
       }
+      user_certifications: {
+        Row: {
+          created_at: string
+          date: string | null
+          id: string
+          issuer: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string | null
+          id?: string
+          issuer?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string | null
+          id?: string
+          issuer?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_connections: {
         Row: {
           access_token: string | null
@@ -223,6 +285,129 @@ export type Database = {
           filepath?: string
           id?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_education: {
+        Row: {
+          created_at: string
+          degree: string
+          description: string | null
+          end_year: string | null
+          id: string
+          institution: string
+          source: string | null
+          start_year: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          degree: string
+          description?: string | null
+          end_year?: string | null
+          id?: string
+          institution: string
+          source?: string | null
+          start_year?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          degree?: string
+          description?: string | null
+          end_year?: string | null
+          id?: string
+          institution?: string
+          source?: string | null
+          start_year?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_experience: {
+        Row: {
+          company: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          role: string
+          source: string | null
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          role: string
+          source?: string | null
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          role?: string
+          source?: string | null
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_languages: {
+        Row: {
+          created_at: string
+          id: string
+          language: string
+          level: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language: string
+          level: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string
+          level?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_skills: {
+        Row: {
+          created_at: string
+          id: string
+          level: number | null
+          name: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: number | null
+          name: string
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number | null
+          name?: string
+          source?: string | null
           user_id?: string
         }
         Relationships: []

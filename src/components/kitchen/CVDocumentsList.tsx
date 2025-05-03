@@ -48,6 +48,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   const handleExtractData = async (id: string) => {
     setProcessingDocs(prev => ({ ...prev, [id]: true }));
     try {
+      toast.info('Extracting data from CV, please wait...');
       await onExtractData(id);
     } finally {
       setProcessingDocs(prev => ({ ...prev, [id]: false }));

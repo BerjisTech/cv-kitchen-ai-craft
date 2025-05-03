@@ -43,15 +43,19 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
       
       setIsLoading(true);
       try {
-        // Fetch experience
-        const { data: experienceData } = await supabase
-          .from('user_experience')
+        // Fetch experience - use any type to bypass TypeScript checking since the table was recently created
+        const { data: experienceData, error: experienceError } = await supabase
+          .from('user_experience' as any)
           .select('*')
           .eq('user_id', profile.id)
           .order('start_date', { ascending: false });
           
+        if (experienceError) {
+          console.error("Error fetching user experience:", experienceError);
+        }
+          
         if (experienceData && experienceData.length > 0) {
-          setWorkExperience(experienceData);
+          setWorkExperience(experienceData as UserExperience[]);
         } else {
           // Default sample experience if none is found
           setWorkExperience([
@@ -68,15 +72,19 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
           ]);
         }
         
-        // Fetch education
-        const { data: educationData } = await supabase
-          .from('user_education')
+        // Fetch education - use any type to bypass TypeScript checking since the table was recently created
+        const { data: educationData, error: educationError } = await supabase
+          .from('user_education' as any)
           .select('*')
           .eq('user_id', profile.id)
           .order('start_year', { ascending: false });
           
+        if (educationError) {
+          console.error("Error fetching user education:", educationError);
+        }
+          
         if (educationData && educationData.length > 0) {
-          setEducation(educationData);
+          setEducation(educationData as UserEducation[]);
         } else {
           // Default sample education if none is found
           setEducation([
