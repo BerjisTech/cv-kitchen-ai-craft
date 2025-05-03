@@ -47,7 +47,7 @@ export async function generateTailoredCV(jobDescription: string, analysisId: str
     }
     
     // Check if we already have a tailored CV for this analysis
-    const { data: existingCV } = await supabase
+    const { data: existingCV, error: existingCVError } = await supabase
       .from('tailored_cvs')
       .select('*')
       .eq('user_id', user.id)

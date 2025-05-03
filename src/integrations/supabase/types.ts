@@ -108,6 +108,47 @@ export type Database = {
         }
         Relationships: []
       }
+      tailored_cvs: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          cv_content: Json
+          id: string
+          job_description: string
+          template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          cv_content: Json
+          id?: string
+          job_description: string
+          template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          cv_content?: Json
+          id?: string
+          job_description?: string
+          template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tailored_cvs_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "job_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_connections: {
         Row: {
           access_token: string | null

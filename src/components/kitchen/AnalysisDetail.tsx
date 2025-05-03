@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X, FileText, Download } from 'lucide-react';
 import { generateTailoredCV, getTailoredCV, TailoredCV } from '@/services/tailoredCVService';
 import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface AnalysisDetailProps {
   analysis: JobAnalysis | null;
@@ -15,6 +16,7 @@ interface AnalysisDetailProps {
 export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClose }) => {
   const [isGeneratingCV, setIsGeneratingCV] = useState(false);
   const [tailoredCV, setTailoredCV] = useState<TailoredCV | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if we already have a tailored CV for this analysis
@@ -72,6 +74,12 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
       setIsGeneratingCV(false);
     }
   };
+  
+  const handleViewCV = () => {
+    if (tailoredCV) {
+      navigate(`/kitchen/cv-viewer/${tailoredCV.id}`);
+    }
+  };
 
   return (
     <Card className="p-5 mb-6 relative">
@@ -100,7 +108,7 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
         {tailoredCV ? (
           <Button 
             className="bg-green-600 hover:bg-green-700"
-            onClick={() => window.open(`/kitchen/cv-viewer/${tailoredCV.id}`, '_blank')}
+            onClick={handleViewCV}
           >
             <FileText className="mr-2 h-4 w-4" /> View Generated CV
           </Button>

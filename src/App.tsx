@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useTheme } from 'next-themes';
-import { Toaster } from '@/components/ui/toaster';
-import { UserProvider } from './context/AuthContext';
+import { Toaster } from '@/components/ui/sonner';
+import { UserProvider, useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import SignUp from './pages/SignUp';
 import SignIn from './pages/SignIn';
@@ -12,15 +13,14 @@ import Kitchen from './pages/Kitchen';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Shelf from './pages/Shelf';
-import { useAuth } from './context/AuthContext';
-import { CVViewer } from "./components/kitchen/CVViewer";
+import { CVViewer } from './components/kitchen/CVViewer';
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 

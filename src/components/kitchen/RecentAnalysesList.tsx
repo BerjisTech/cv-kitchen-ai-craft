@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { AnalysisItem } from '@/components/kitchen/AnalysisItem';
 import { JobAnalysis } from '@/services/jobAnalysisService';
 import { getTailoredCV } from '@/services/tailoredCVService';
-import { FileText } from 'lucide-react';
 
 interface RecentAnalysesListProps {
   analyses: JobAnalysis[];
@@ -47,7 +46,6 @@ export const RecentAnalysesList: React.FC<RecentAnalysesListProps> = ({
               title={analysis.job_description.substring(0, 60) + (analysis.job_description.length > 60 ? '...' : '')}
               timeAgo={new Date(analysis.created_at).toLocaleDateString()}
               onClick={() => onViewAnalysis(analysis.id)}
-              aria-label={`View analysis for ${analysis.job_description.substring(0, 20)}...`}
               hasCV={analysesWithCVs[analysis.id]}
             />
             {analysis !== analyses[analyses.length - 1] && (

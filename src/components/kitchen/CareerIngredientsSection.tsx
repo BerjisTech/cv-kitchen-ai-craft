@@ -52,7 +52,7 @@ export const CareerIngredientsSection: React.FC = () => {
           count={0} // This would be dynamic in a real implementation
           description="Your tailored CVs for job applications"
           routePath="/shelf"
-          icon={<FileText className="h-4 w-4" />}
+          accentColor="green"
         />
       </div>
     </div>
