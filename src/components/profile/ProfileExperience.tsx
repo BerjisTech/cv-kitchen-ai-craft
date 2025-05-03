@@ -43,9 +43,9 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
       
       setIsLoading(true);
       try {
-        // Fetch experience - use any type to bypass TypeScript checking since the table was recently created
+        // Fetch experience
         const { data: experienceData, error: experienceError } = await supabase
-          .from('user_experience' as any)
+          .from('user_experience')
           .select('*')
           .eq('user_id', profile.id)
           .order('start_date', { ascending: false });
@@ -55,7 +55,9 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         }
           
         if (experienceData && experienceData.length > 0) {
-          setWorkExperience(experienceData as UserExperience[]);
+          // Safely cast the data
+          const typedExperience = experienceData as unknown as UserExperience[];
+          setWorkExperience(typedExperience);
         } else {
           // Default sample experience if none is found
           setWorkExperience([
@@ -72,9 +74,9 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
           ]);
         }
         
-        // Fetch education - use any type to bypass TypeScript checking since the table was recently created
+        // Fetch education
         const { data: educationData, error: educationError } = await supabase
-          .from('user_education' as any)
+          .from('user_education')
           .select('*')
           .eq('user_id', profile.id)
           .order('start_year', { ascending: false });
@@ -84,7 +86,9 @@ export const ProfileExperience: React.FC<ProfileExperienceProps> = ({ profile })
         }
           
         if (educationData && educationData.length > 0) {
-          setEducation(educationData as UserEducation[]);
+          // Safely cast the data
+          const typedEducation = educationData as unknown as UserEducation[];
+          setEducation(typedEducation);
         } else {
           // Default sample education if none is found
           setEducation([

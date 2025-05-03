@@ -50,6 +50,10 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     try {
       toast.info('Extracting data from CV, please wait...');
       await onExtractData(id);
+      toast.success('CV data extracted successfully! Your profile has been updated.');
+    } catch (error) {
+      console.error('Error extracting data:', error);
+      toast.error('Failed to extract data from CV');
     } finally {
       setProcessingDocs(prev => ({ ...prev, [id]: false }));
     }

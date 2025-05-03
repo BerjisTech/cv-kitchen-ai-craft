@@ -44,9 +44,9 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
       
       setIsLoading(true);
       try {
-        // Fetch skills - use any type to bypass TypeScript checking since the table was recently created
+        // Fetch skills
         const { data: skillsData, error: skillsError } = await supabase
-          .from('user_skills' as any)
+          .from('user_skills')
           .select('*')
           .eq('user_id', profile.id);
           
@@ -55,12 +55,14 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (skillsData) {
-          setSkills(skillsData as UserSkill[]);
+          // Safely cast the data
+          const typedSkills = skillsData as unknown as UserSkill[];
+          setSkills(typedSkills);
         }
         
-        // Fetch languages - use any type to bypass TypeScript checking since the table was recently created
+        // Fetch languages
         const { data: languagesData, error: languagesError } = await supabase
-          .from('user_languages' as any)
+          .from('user_languages')
           .select('*')
           .eq('user_id', profile.id);
           
@@ -69,7 +71,9 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (languagesData && languagesData.length > 0) {
-          setLanguages(languagesData as UserLanguage[]);
+          // Safely cast the data
+          const typedLanguages = languagesData as unknown as UserLanguage[];
+          setLanguages(typedLanguages);
         } else {
           // Default sample languages if none are found
           setLanguages([
@@ -78,9 +82,9 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
           ]);
         }
         
-        // Fetch certifications - use any type to bypass TypeScript checking since the table was recently created
+        // Fetch certifications
         const { data: certificationsData, error: certificationsError } = await supabase
-          .from('user_certifications' as any)
+          .from('user_certifications')
           .select('*')
           .eq('user_id', profile.id);
           
@@ -89,7 +93,9 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (certificationsData && certificationsData.length > 0) {
-          setCertifications(certificationsData as UserCertification[]);
+          // Safely cast the data
+          const typedCertifications = certificationsData as unknown as UserCertification[];
+          setCertifications(typedCertifications);
         } else {
           // Default sample certifications if none are found
           setCertifications([
