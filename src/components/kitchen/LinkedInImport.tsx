@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Linkedin, Upload, FileText, ArrowRight, FileJson, FileCsv } from 'lucide-react';
+import { Linkedin, Upload, FileText, ArrowRight, FileJson, Files } from 'lucide-react';
 import { processLinkedInFiles, saveLinkedInData } from '@/services/linkedinImportService';
 import { toast } from '@/components/ui/sonner';
 
@@ -75,7 +75,7 @@ export const LinkedInImport = () => {
             <div className="flex flex-col items-center gap-3 py-4">
               <div className="flex gap-2">
                 <FileJson className="h-10 w-10 text-blue-500" />
-                <FileCsv className="h-10 w-10 text-green-500" />
+                <Files className="h-10 w-10 text-green-500" />
               </div>
               <div className="text-center">
                 <p className="font-medium">Select Files</p>
@@ -111,7 +111,7 @@ export const LinkedInImport = () => {
                   return (
                     <li key={index} className="flex items-center gap-2">
                       {isCSV ? 
-                        <FileCsv className="h-4 w-4 text-green-500" /> : 
+                        <Files className="h-4 w-4 text-green-500" /> : 
                         <FileJson className="h-4 w-4 text-blue-500" />
                       }
                       {file.name}
