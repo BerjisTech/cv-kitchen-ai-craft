@@ -1,108 +1,78 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/integrations/supabase/client';
 
-export type ProfileData = {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  bio: string | null;
-  website: string | null;
-  role: string;
-  email?: string;
-  phone?: string;
+export interface ProfileData {
+  id?: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  website?: string;
   location?: string;
-};
+  role?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export async function getProfile(): Promise<ProfileData | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) throw new Error("User not authenticated");
+    if (!user) {
+      return null;
+    }
     
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
+      
+    if (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
     
-    if (error) throw error;
-    
-    // Create a ProfileData object with the role field
-    const profileData: ProfileData = {
-      ...data,
-      role: data.role || 'job_seeker',
-      email: user.email
-    };
-    
-    return profileData;
-    
-  } catch (error: any) {
-    console.error("Error fetching profile:", error);
-    toast.error("Failed to load profile data");
+    return data as ProfileData;
+  } catch (error) {
+    console.error("Error in getProfile:", error);
     return null;
   }
 }
 
-export async function updateProfile(updates: Partial<ProfileData>): Promise<boolean> {
+export async function updateProfile(profileData: Partial<ProfileData>): Promise<ProfileData | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) throw new Error("User not authenticated");
-    
-    console.log('Updating profile with:', updates); // Debug log
-    
-    // Remove fields that aren't in the profiles table
-    const { email, phone, location, ...profileData } = updates;
-    
-    console.log('Data being sent to database:', profileData); // Debug log
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update(profileData)
-      .eq('id', user.id);
-      
-    if (error) throw error;
-    
-    // Update the user metadata with the username if it was changed
-    // This will make it available in user.user_metadata.username
-    if (profileData.username) {
-      await supabase.auth.updateUser({
-        data: { username: profileData.username }
-      });
+    if (!user) {
+      throw new Error('Not authenticated');
     }
     
-    toast.success("Profile updated successfully");
-    return true;
-  } catch (error: any) {
-    console.error("Error updating profile:", error);
-    toast.error(error.message || "Failed to update profile");
-    return false;
+    // Remove id from update data if it exists
+    const { id, ...updateData } = profileData;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Error updating profile:", error);
+      throw error;
+    }
+    
+    return data as ProfileData;
+  } catch (error) {
+    console.error("Error in updateProfile:", error);
+    throw error;
   }
 }
 
-export async function updatePassword(
-  currentPassword: string,
-  newPassword: string
-): Promise<boolean> {
-  try {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    
-    if (error) throw error;
-    
-    toast.success("Password updated successfully");
-    return true;
-  } catch (error: any) {
-    console.error("Error updating password:", error);
-    toast.error(error.message || "Failed to update password");
-    return false;
-  }
-}
-
-// Get profile by username
 export async function getProfileByUsername(username: string): Promise<ProfileData | null> {
   try {
     const { data, error } = await supabase
@@ -110,19 +80,15 @@ export async function getProfileByUsername(username: string): Promise<ProfileDat
       .select('*')
       .eq('username', username)
       .single();
+      
+    if (error) {
+      console.error("Error fetching profile by username:", error);
+      return null;
+    }
     
-    if (error) throw error;
-    
-    // Create a ProfileData object with the role field
-    const profileData: ProfileData = {
-      ...data,
-      role: data.role || 'job_seeker'
-    };
-    
-    return profileData;
-    
-  } catch (error: any) {
-    console.error("Error fetching profile by username:", error);
+    return data as ProfileData;
+  } catch (error) {
+    console.error("Error in getProfileByUsername:", error);
     return null;
   }
 }

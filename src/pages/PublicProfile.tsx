@@ -1,99 +1,103 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { ProfileData, getProfileByUsername } from '@/services/profileService';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileAbout } from '@/components/profile/ProfileAbout';
-import { ProfileContact } from '@/components/profile/ProfileContact';
-import { ProfilePortfolio } from '@/components/profile/ProfilePortfolio';
 import { ProfileExperience } from '@/components/profile/ProfileExperience';
 import { ProfileSkills } from '@/components/profile/ProfileSkills';
+import { ProfileContact } from '@/components/profile/ProfileContact';
+import { ProfilePortfolio } from '@/components/profile/ProfilePortfolio';
+import { getProfileByUsername, ProfileData } from '@/services/profileService';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!username) {
-        setError("Username not provided");
-        setLoading(false);
-        return;
-      }
-
+      if (!username) return;
+      
+      setIsLoading(true);
       try {
         const profileData = await getProfileByUsername(username);
-        if (profileData) {
-          setProfile(profileData);
-        } else {
-          setError("User not found");
+        
+        if (!profileData) {
+          // Profile not found
+          navigate('/not-found');
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-        setError("Error loading profile");
+        
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        navigate('/not-found');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
-
+    
     fetchProfile();
-  }, [username]);
-
-  if (loading) {
+  }, [username, navigate]);
+  
+  if (isLoading) {
     return (
       <MainLayout>
         <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-24 h-24 rounded-full" />
+          <Skeleton className="h-48 w-full rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <Skeleton className="h-64 w-full rounded-lg" />
+            </div>
             <div>
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-64 w-full rounded-lg" />
             </div>
           </div>
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-64 w-full" />
         </div>
       </MainLayout>
     );
   }
-
-  if (error || !profile) {
-    return (
-      <MainLayout>
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">{error || "User not found"}</h1>
-          <p className="text-muted-foreground">
-            The profile you're looking for doesn't seem to exist.
-          </p>
-        </div>
-      </MainLayout>
-    );
-  }
-
+  
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <ProfileHeader profile={profile} isPublic={true} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ProfileAbout profile={profile} />
-            <div className="mt-6">
-              <ProfileExperience />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <ProfileAbout profile={profile} isPublic={true} />
+            
+            <Tabs defaultValue="experience" className="glass-card">
+              <TabsList className="w-full bg-transparent border-b rounded-none px-6 h-14">
+                <TabsTrigger value="experience" className="data-[state=active]:bg-transparent">Experience</TabsTrigger>
+                <TabsTrigger value="education" className="data-[state=active]:bg-transparent">Education</TabsTrigger>
+                <TabsTrigger value="skills" className="data-[state=active]:bg-transparent">Skills</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="experience" className="p-6">
+                <ProfileExperience profile={profile} />
+              </TabsContent>
+              
+              <TabsContent value="education" className="p-6">
+                <p className="text-muted-foreground">Education details</p>
+              </TabsContent>
+              
+              <TabsContent value="skills" className="p-6">
+                <ProfileSkills profile={profile} />
+              </TabsContent>
+            </Tabs>
+            
+            <ProfilePortfolio />
           </div>
           
-          <div className="space-y-6">
-            <ProfileContact profile={profile} />
-            <ProfileSkills />
+          <div>
+            <ProfileContact profile={profile} isPublic={true} />
           </div>
         </div>
-        
-        <ProfilePortfolio profile={profile} />
       </div>
     </MainLayout>
   );

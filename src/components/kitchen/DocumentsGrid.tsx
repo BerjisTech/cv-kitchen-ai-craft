@@ -5,16 +5,44 @@ import { Button } from '@/components/ui/button';
 import { FileText, Trash2 } from 'lucide-react';
 import { UserDocument, getDownloadUrl, deleteDocument } from '@/services/documentService';
 import { toast } from '@/components/ui/sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DocumentsGridProps {
   documents: UserDocument[];
   onDocumentDeleted: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const DocumentsGrid: React.FC<DocumentsGridProps> = ({ 
   documents,
-  onDocumentDeleted
+  onDocumentDeleted,
+  isLoading = false
 }) => {
+  if (isLoading) {
+    return (
+      <div className="mt-6">
+        <h3 className="font-medium text-lg mb-3">Your CV Documents</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array(4).fill(0).map((_, index) => (
+            <Card key={index} className="p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1 overflow-hidden">
+                  <Skeleton className="h-4 w-3/4 mb-1" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+              <div className="mt-auto pt-2 flex justify-between">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (documents.length === 0) return null;
 
   const handleDownloadCV = async (filepath: string, filename: string) => {

@@ -64,13 +64,26 @@ export const RecentCVs = () => {
         }
         
         if (data) {
-          const formattedCVs = data.map(cv => ({
-            id: cv.id,
-            title: cv.cv_content?.title || cv.cv_content?.header?.title || "Untitled CV",
-            description: `${cv.template.charAt(0).toUpperCase() + cv.template.slice(1)} template`,
-            timeAgo: format(new Date(cv.created_at), 'MMM d, yyyy'),
-            cvId: cv.id
-          }));
+          const formattedCVs = data.map(cv => {
+            // Handle different possible data structures in cv_content
+            let title = "Untitled CV";
+            
+            if (cv.cv_content && typeof cv.cv_content === 'object') {
+              if ('title' in cv.cv_content) {
+                title = (cv.cv_content as any).title || title;
+              } else if ('header' in cv.cv_content && typeof (cv.cv_content as any).header === 'object') {
+                title = (cv.cv_content as any).header?.title || title;
+              }
+            }
+            
+            return {
+              id: cv.id,
+              title: title,
+              description: `${cv.template.charAt(0).toUpperCase() + cv.template.slice(1)} template`,
+              timeAgo: format(new Date(cv.created_at), 'MMM d, yyyy'),
+              cvId: cv.id
+            };
+          });
           
           setCvs(formattedCVs);
         }

@@ -49,7 +49,17 @@ export async function getUserActivity(): Promise<UserActivity[]> {
     // Add CV activities
     if (cvs) {
       cvs.forEach(cv => {
-        const title = cv.cv_content?.title || cv.cv_content?.header?.title || "Untitled CV";
+        // Handle different possible data structures in cv_content
+        let title = "Untitled CV";
+        
+        if (cv.cv_content && typeof cv.cv_content === 'object') {
+          if ('title' in cv.cv_content) {
+            title = (cv.cv_content as any).title || title;
+          } else if ('header' in cv.cv_content && typeof (cv.cv_content as any).header === 'object') {
+            title = (cv.cv_content as any).header?.title || title;
+          }
+        }
+        
         activities.push({
           id: `cv-${cv.id}`,
           title: `Created "${title}" CV`,

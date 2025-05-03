@@ -1,44 +1,43 @@
 
 import React from 'react';
-import { ArrowRight, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Eye } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { JobAnalysis } from '@/services/jobAnalysisService';
 
-interface AnalysisItemProps {
-  title: string;
-  timeAgo: string;
-  onClick?: () => void;
-  hasCV?: boolean;
+export interface AnalysisItemProps {
+  analysis: JobAnalysis;
+  onView: () => void;
 }
 
-export const AnalysisItem: React.FC<AnalysisItemProps> = ({ 
-  title, 
-  timeAgo, 
-  onClick,
-  hasCV = false
-}) => {
+export const AnalysisItem: React.FC<AnalysisItemProps> = ({ analysis, onView }) => {
+  const getJobTitle = () => {
+    const firstLine = analysis.job_description.split('\n')[0];
+    return firstLine.length > 50 ? `${firstLine.substring(0, 50)}...` : firstLine;
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (error) {
+      return "recently";
+    }
+  };
+
   return (
-    <div 
-      className="flex justify-between items-center p-4 hover:bg-muted/20 cursor-pointer transition-colors"
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onClick?.();
-        }
-      }}
-    >
-      <div className="flex items-center gap-2">
-        {hasCV && (
-          <div className="text-green-500 flex-shrink-0">
-            <FileText className="h-4 w-4" />
-          </div>
-        )}
-        <div>
-          <h4 className="font-medium">{title}</h4>
-          <p className="text-sm text-muted-foreground">{timeAgo}</p>
-        </div>
+    <div className="p-4 border rounded-md bg-muted/10">
+      <h3 className="font-medium mb-2">{getJobTitle()}</h3>
+      <p className="text-sm text-muted-foreground mb-2">
+        {analysis.analysis.substring(0, 100)}...
+      </p>
+      <div className="flex justify-between items-center mt-3">
+        <span className="text-xs text-muted-foreground">
+          {formatTimeAgo(analysis.created_at)}
+        </span>
+        <Button variant="ghost" size="sm" onClick={onView}>
+          <Eye className="h-4 w-4 mr-1" /> View
+        </Button>
       </div>
-      <ArrowRight className="h-5 w-5 text-muted-foreground" />
     </div>
   );
 };
