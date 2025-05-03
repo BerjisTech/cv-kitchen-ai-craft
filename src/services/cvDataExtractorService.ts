@@ -191,7 +191,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
 
     // 1. Update basic profile information
     if (cvData.fullName || cvData.title || cvData.summary || cvData.contact) {
-      const profileUpdate = supabase
+      const profileUpdatePromise = supabase
         .from('profiles')
         .update({
           full_name: cvData.fullName || undefined,
@@ -201,9 +201,10 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           website: cvData.contact?.website || undefined,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .then(response => response);
       
-      updates.push(profileUpdate.then(res => res));
+      updates.push(profileUpdatePromise);
     }
 
     // 2. Process and store skills
@@ -232,11 +233,12 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           level: Math.floor(Math.random() * 31) + 70
         }));
         
-        const skillsUpdate = supabase
+        const skillsUpdatePromise = supabase
           .from('user_skills')
-          .insert(skillsData);
+          .insert(skillsData)
+          .then(response => response);
         
-        updates.push(skillsUpdate.then(res => res));
+        updates.push(skillsUpdatePromise);
       }
     }
 
@@ -275,11 +277,12 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!experienceExists(experienceEntry)) {
-          const experienceUpdate = supabase
+          const experienceUpdatePromise = supabase
             .from('user_experience')
-            .insert([experienceEntry]);
+            .insert([experienceEntry])
+            .then(response => response);
           
-          updates.push(experienceUpdate.then(res => res));
+          updates.push(experienceUpdatePromise);
         }
       }
     }
@@ -318,11 +321,12 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!educationExists(educationEntry)) {
-          const educationUpdate = supabase
+          const educationUpdatePromise = supabase
             .from('user_education')
-            .insert([educationEntry]);
+            .insert([educationEntry])
+            .then(response => response);
           
-          updates.push(educationUpdate.then(res => res));
+          updates.push(educationUpdatePromise);
         }
       }
     }
@@ -351,11 +355,12 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           level: lang.proficiency || 'Intermediate'
         }));
         
-        const languagesUpdate = supabase
+        const languagesUpdatePromise = supabase
           .from('user_languages')
-          .insert(languagesData);
+          .insert(languagesData)
+          .then(response => response);
         
-        updates.push(languagesUpdate.then(res => res));
+        updates.push(languagesUpdatePromise);
       }
     }
 
@@ -390,11 +395,12 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         
         // Only add if it doesn't exist
         if (!certificationExists(certEntry)) {
-          const certUpdate = supabase
+          const certUpdatePromise = supabase
             .from('user_certifications')
-            .insert([certEntry]);
+            .insert([certEntry])
+            .then(response => response);
           
-          updates.push(certUpdate.then(res => res));
+          updates.push(certUpdatePromise);
         }
       }
     }
