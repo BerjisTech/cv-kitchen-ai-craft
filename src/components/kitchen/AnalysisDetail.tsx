@@ -4,8 +4,8 @@ import { JobAnalysis } from '@/services/jobAnalysisService';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, FileText, Download } from 'lucide-react';
-import { checkForExistingCV, generateTailoredCV, getTailoredCV } from '@/services/tailoredCVService';
-import { TailoredCV } from '@/types/tailoredCV'; // Fixed import from types file
+import { checkForExistingCV, generateTailoredCV } from '@/services/tailoredCVService';
+import { TailoredCV } from '@/types/tailoredCV';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,10 +22,14 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
   useEffect(() => {
     // Check if we already have a tailored CV for this analysis
     const checkExistingCV = async () => {
-      if (analysis) {
-        const existingCV = await getTailoredCV(analysis.id);
-        if (existingCV) {
-          setTailoredCV(existingCV);
+      if (analysis && analysis.id) {
+        try {
+          const existingCV = await checkForExistingCV(analysis.id);
+          if (existingCV) {
+            setTailoredCV(existingCV);
+          }
+        } catch (error) {
+          console.error("Error checking for existing CV:", error);
         }
       }
     };
@@ -59,7 +63,10 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
   };
 
   const handleGenerateCV = async () => {
-    if (!analysis) return;
+    if (!analysis || !analysis.id) {
+      toast.error("Missing analysis information");
+      return;
+    }
     
     setIsGeneratingCV(true);
     try {
@@ -70,15 +77,17 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
       }
     } catch (error) {
       console.error("Error generating CV:", error);
-      toast.error("Failed to generate CV");
+      toast.error("Failed to generate CV. Please try again later.");
     } finally {
       setIsGeneratingCV(false);
     }
   };
   
   const handleViewCV = () => {
-    if (tailoredCV) {
+    if (tailoredCV && tailoredCV.id) {
       navigate(`/kitchen/cv-viewer/${tailoredCV.id}`);
+    } else {
+      toast.error("CV data is not available");
     }
   };
 

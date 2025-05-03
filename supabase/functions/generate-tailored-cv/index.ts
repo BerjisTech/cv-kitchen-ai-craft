@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     const { jobDescription, userId, analysisId } = await req.json();
     
-    if (!jobDescription || !userId) {
+    if (!jobDescription || !userId || !analysisId) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -100,10 +100,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        cv: cvData 
-      }),
+      JSON.stringify(cvData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

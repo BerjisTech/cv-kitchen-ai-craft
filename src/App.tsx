@@ -11,6 +11,8 @@ import Kitchen from './pages/Kitchen';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Shelf from './pages/Shelf';
+import Dashboard from './pages/Dashboard'; 
+import Analytics from './pages/Analytics';
 import { CVViewer } from './components/kitchen/CVViewer';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
@@ -54,11 +56,13 @@ const App = () => {
           <BrowserRouter>
             <UserProvider>
               <Routes>
-                <Route path="/" element={<Navigate to="/kitchen" />} />
+                <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 
                 <Route element={<ProtectedRoute />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/analytics" element={<Analytics />} />
                   <Route path="/kitchen" element={<Kitchen />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/settings" element={<Settings />} />
