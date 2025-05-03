@@ -5,11 +5,15 @@ import { ArrowRight } from 'lucide-react';
 interface AnalysisItemProps {
   title: string;
   timeAgo: string;
+  onClick?: () => void;
 }
 
-export const AnalysisItem: React.FC<AnalysisItemProps> = ({ title, timeAgo }) => {
+export const AnalysisItem: React.FC<AnalysisItemProps> = ({ title, timeAgo, onClick }) => {
   return (
-    <div className="flex justify-between items-center p-4 hover:bg-muted/20 cursor-pointer transition-colors">
+    <div 
+      className="flex justify-between items-center p-4 hover:bg-muted/20 cursor-pointer transition-colors"
+      onClick={onClick}
+    >
       <div>
         <h4 className="font-medium">{title}</h4>
         <p className="text-sm text-muted-foreground">{timeAgo}</p>

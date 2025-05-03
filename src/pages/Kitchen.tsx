@@ -5,12 +5,15 @@ import { Upload, FileUp, Linkedin, Github, ArrowRight, FileText, Trash2 } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { FileUploader } from '@/components/kitchen/FileUploader';
 import { AnalysisItem } from '@/components/kitchen/AnalysisItem';
+import { AnalysisDetail } from '@/components/kitchen/AnalysisDetail';
 import { CareerIngredientCard } from '@/components/kitchen/CareerIngredientCard';
 import { useTheme } from '@/context/ThemeProvider';
 import { connectWithGitHub, connectWithLinkedIn, getUserConnections } from '@/services/socialConnectionService';
 import { getUserDocuments, UserDocument, deleteDocument, getDownloadUrl } from '@/services/documentService';
+import { analyzeJobDescription, getRecentAnalyses, getAnalysisById, JobAnalysis } from '@/services/jobAnalysisService';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/sonner';
 
@@ -19,6 +22,9 @@ const Kitchen = () => {
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
   const [socialConnections, setSocialConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [recentAnalyses, setRecentAnalyses] = useState<JobAnalysis[]>([]);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<JobAnalysis | null>(null);
   const { colorPalette } = useTheme();
   const { user } = useAuth();
   
@@ -29,9 +35,11 @@ const Kitchen = () => {
         try {
           const docs = await getUserDocuments('cv');
           const connections = await getUserConnections();
+          const analyses = await getRecentAnalyses();
           
           setUserDocuments(docs);
           setSocialConnections(connections);
+          setRecentAnalyses(analyses);
         } catch (error) {
           console.error("Error fetching user data:", error);
           toast.error("Failed to load your data");
@@ -50,13 +58,50 @@ const Kitchen = () => {
     getUserDocuments('cv').then(docs => setUserDocuments(docs));
   };
 
-  const handleJobDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleJobDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setJobDescription(e.target.value);
   };
 
-  const handleAnalyze = () => {
-    console.log('Analyzing job description:', jobDescription);
-    toast.info("Job description analysis feature coming soon!");
+  const handleAnalyze = async () => {
+    if (!jobDescription.trim()) {
+      toast.error("Please enter a job description to analyze");
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    
+    try {
+      const result = await analyzeJobDescription(jobDescription);
+      
+      if (result) {
+        toast.success("Job description analyzed successfully");
+        
+        // Fetch the full analysis details
+        const analysisDetails = await getAnalysisById(result.id);
+        if (analysisDetails) {
+          setSelectedAnalysis(analysisDetails);
+        }
+        
+        // Refresh the list of analyses
+        const analyses = await getRecentAnalyses();
+        setRecentAnalyses(analyses);
+      }
+    } catch (error) {
+      console.error("Error analyzing job description:", error);
+      toast.error("Failed to analyze job description");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+  
+  const handleViewAnalysis = async (id: string) => {
+    try {
+      const analysis = await getAnalysisById(id);
+      setSelectedAnalysis(analysis);
+    } catch (error) {
+      console.error("Error fetching analysis:", error);
+      toast.error("Failed to load analysis");
+    }
   };
   
   const handleDownloadCV = async (filepath: string, filename: string) => {
@@ -225,6 +270,14 @@ const Kitchen = () => {
           </Card>
         </div>
         
+        {/* Selected Analysis Detail */}
+        {selectedAnalysis && (
+          <AnalysisDetail 
+            analysis={selectedAnalysis} 
+            onClose={() => setSelectedAnalysis(null)}
+          />
+        )}
+        
         {/* Job Description Analysis */}
         <Card className="p-5">
           <div className="flex justify-between items-center mb-4">
@@ -238,41 +291,42 @@ const Kitchen = () => {
               Our AI will analyze the job description and suggest how to tailor your CV for best match.
             </p>
             
-            <div className="flex gap-2">
-              <Input 
-                placeholder="Paste job description URL or text"
-                value={jobDescription}
-                onChange={handleJobDescriptionChange}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleAnalyze}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                Analyze
-              </Button>
-            </div>
+            <Textarea 
+              placeholder="Paste job description text here..."
+              value={jobDescription}
+              onChange={handleJobDescriptionChange}
+              className="mb-4 min-h-[100px]"
+            />
+            
+            <Button 
+              onClick={handleAnalyze}
+              className="bg-blue-500 hover:bg-blue-600 w-full md:w-auto"
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? "Analyzing..." : "Analyze Job Description"}
+            </Button>
           </div>
         </Card>
         
         {/* Recent Analyses */}
-        <div className="space-y-3">
-          <h3 className="font-medium text-lg">Recent Analyses</h3>
-          
-          <Card className="overflow-hidden">
-            <AnalysisItem 
-              title="Frontend Developer at Google"
-              timeAgo="2 days ago"
-            />
+        {recentAnalyses.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="font-medium text-lg">Recent Analyses</h3>
             
-            <div className="border-t border-border"></div>
-            
-            <AnalysisItem 
-              title="UX Designer at Apple"
-              timeAgo="1 week ago"
-            />
-          </Card>
-        </div>
+            <Card className="overflow-hidden">
+              {recentAnalyses.map((analysis) => (
+                <React.Fragment key={analysis.id}>
+                  <AnalysisItem 
+                    title={analysis.job_description.substring(0, 60) + (analysis.job_description.length > 60 ? '...' : '')}
+                    timeAgo={new Date(analysis.created_at).toLocaleDateString()}
+                    onClick={() => handleViewAnalysis(analysis.id)}
+                  />
+                  <div className="border-t border-border"></div>
+                </React.Fragment>
+              ))}
+            </Card>
+          </div>
+        )}
         
         {/* Career Ingredients */}
         <div>
