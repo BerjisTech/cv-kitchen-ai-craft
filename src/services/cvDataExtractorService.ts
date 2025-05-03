@@ -128,8 +128,14 @@ export async function getAllCVContext(): Promise<{
       console.error("Error fetching profile data:", profileError);
     }
     
+    // Convert document_type to the expected type
+    const typedDocuments = documents ? documents.map(doc => ({
+      ...doc,
+      document_type: doc.document_type as 'cv' | 'portfolio' | 'certificate' | 'other'
+    })) as UserDocument[] : [];
+    
     return {
-      cvDocuments: documents || [],
+      cvDocuments: typedDocuments,
       linkedInData: linkedInData || null,
       profileData: profileData || null
     };

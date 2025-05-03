@@ -33,7 +33,11 @@ export async function getUserDocuments(type?: string): Promise<UserDocument[]> {
     
     if (error) throw error;
     
-    return data as UserDocument[];
+    // Convert document_type to the expected type
+    return (data as any[]).map(doc => ({
+      ...doc,
+      document_type: doc.document_type as 'cv' | 'portfolio' | 'certificate' | 'other'
+    }));
     
   } catch (error: any) {
     console.error("Error fetching documents:", error);

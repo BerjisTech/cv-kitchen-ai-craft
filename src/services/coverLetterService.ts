@@ -14,6 +14,7 @@ export interface CoverLetter {
   last_updated?: string;
 }
 
+// This is a placeholder function that returns empty array until cover_letters table is created
 export async function getUserCoverLetters(): Promise<CoverLetter[]> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,23 +24,12 @@ export async function getUserCoverLetters(): Promise<CoverLetter[]> {
       return [];
     }
     
-    const { data, error } = await supabase
-      .from('cover_letters')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error("Error fetching cover letters:", error);
-      toast.error("Failed to load cover letters");
-      return [];
-    }
+    // Placeholder until cover_letters table is created
+    // In a real implementation, this would query the cover_letters table
+    console.log("Note: cover_letters table does not exist yet. Returning empty array.");
     
-    // Format dates for display
-    return data.map(letter => ({
-      ...letter,
-      last_updated: new Date(letter.updated_at).toLocaleDateString()
-    }));
+    // Return empty array as placeholder
+    return [];
   } catch (error) {
     console.error("Error in getUserCoverLetters:", error);
     toast.error("Failed to load cover letters");
@@ -56,23 +46,13 @@ export async function createCoverLetter(coverLetterData: Partial<CoverLetter>): 
       return null;
     }
     
-    const { data, error } = await supabase
-      .from('cover_letters')
-      .insert({
-        ...coverLetterData,
-        user_id: user.id
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error("Error creating cover letter:", error);
-      toast.error("Failed to create cover letter");
-      return null;
-    }
+    // Placeholder until cover_letters table is created
+    // In a real implementation, this would insert into the cover_letters table
+    console.log("Note: cover_letters table does not exist yet. Can't create cover letter.");
+    toast.warning("Cover letter creation is not implemented yet.");
     
-    toast.success("Cover letter created successfully");
-    return data;
+    // Return null since we can't actually create one yet
+    return null;
   } catch (error) {
     console.error("Error in createCoverLetter:", error);
     toast.error("Failed to create cover letter");

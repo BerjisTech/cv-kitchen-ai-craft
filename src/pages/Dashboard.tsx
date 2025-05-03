@@ -9,6 +9,7 @@ import { RecentCVs } from '@/components/dashboard/RecentCVs';
 import { getProfile } from '@/services/profileService';
 import { getTailoredCV } from '@/services/tailoredCVService';
 import { getUserDocuments } from '@/services/documentService';
+import { getUserCoverLetters } from '@/services/coverLetterService';
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -26,13 +27,14 @@ const Dashboard = () => {
         const documents = await getUserDocuments();
         const cvCount = documents.filter(doc => doc.document_type === 'cv').length;
         
-        // For now we'll use placeholder data for cover letters and analyses
-        // In a real implementation we'd fetch these from the database
+        // Load cover letters
+        const coverLetters = await getUserCoverLetters();
+        const coverLetterCount = coverLetters.length;
         
         setStats({
           cvCount,
-          coverLetterCount: 2, // Placeholder
-          analysisCount: 5 // Placeholder
+          coverLetterCount,
+          analysisCount: 5 // Placeholder for now
         });
       } catch (error) {
         console.error("Error loading dashboard data:", error);
