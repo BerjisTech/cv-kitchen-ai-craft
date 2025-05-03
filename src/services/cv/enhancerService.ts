@@ -38,7 +38,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
       .from('linkedin_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
       
     if (linkedinError && linkedinError.code !== 'PGRST116') {
       // PGRST116 is the "no rows returned" error, which is fine
@@ -51,6 +51,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     // 2. Extract text data from all CVs
     const cvTexts: string[] = [];
     const allExtractedData: ExtractedCVData[] = [];
+    let successfulExtractions = 0;
     
     for (const doc of documents) {
       try {
@@ -59,11 +60,16 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
         const extractedData = await extractCVData(doc.id);
         if (extractedData) {
           console.log(`Successfully extracted data from ${doc.filename}:`, extractedData);
-          allExtractedData.push(extractedData);
           
-          // Convert extracted data to text format for AI prompt
-          const textRepresentation = convertExtractedDataToText(extractedData, doc.filename);
-          cvTexts.push(textRepresentation);
+          // Only include non-placeholder data
+          if (!extractedData.summary?.includes('placeholder')) {
+            allExtractedData.push(extractedData);
+            successfulExtractions++;
+            
+            // Convert extracted data to text format for AI prompt
+            const textRepresentation = convertExtractedDataToText(extractedData, doc.filename);
+            cvTexts.push(textRepresentation);
+          }
         } else {
           console.error(`Failed to extract data from ${doc.filename}`);
         }
@@ -82,8 +88,10 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     }
     
     if (cvTexts.length === 0) {
-      toast.error("Could not extract data from any of your CVs");
+      toast.error("Could not extract meaningful data from any of your CVs. Please make sure your CV files are in a readable format.");
       return false;
+    } else if (successfulExtractions < documents.length) {
+      toast.warning(`Successfully extracted data from ${successfulExtractions} of ${documents.length} CVs.`);
     }
 
     console.log(`Successfully extracted text from ${cvTexts.length} sources`);
@@ -103,6 +111,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     return success;
   } catch (error) {
     console.error('Error in enhanceUserProfile:', error);
+    toast.error(`Failed to enhance profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 };

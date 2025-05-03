@@ -49,11 +49,11 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are a CV parsing specialist that merges information from multiple sources into a single comprehensive profile. Return ONLY valid JSON without any other text. Use only actual data from the provided sources - do not invent or generate generic data where information is missing.'
+            content: 'You are a CV parsing specialist that merges information from multiple sources into a single comprehensive profile. Return ONLY valid JSON without any other text. Use only actual data from the provided sources - NEVER invent or generate generic data where information is missing. Return null values rather than inventing data.'
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1,  // Lower temperature for more consistent output
+        temperature: 0.0,  // Using temperature 0 for most consistent output without creativity
         response_format: { type: "json_object" }
       })
     });
@@ -82,6 +82,17 @@ serve(async (req) => {
     try {
       unifiedData = JSON.parse(data.choices[0].message.content);
       console.log("Successfully processed unified CV data");
+      
+      // Check if we got generic/placeholder data in the summary field
+      if (unifiedData.summary && (
+          unifiedData.summary.includes("placeholder") || 
+          unifiedData.summary.includes("could not be processed") ||
+          unifiedData.summary.includes("Experienced professional with"))) {
+        return new Response(
+          JSON.stringify({ error: "Failed to extract meaningful data from your CVs" }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } catch (error) {
       console.error("Error parsing OpenAI response as JSON:", error);
       return new Response(

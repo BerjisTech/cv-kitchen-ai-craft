@@ -83,11 +83,31 @@ serve(async (req) => {
       if (existingDataResponse.ok) {
         const existingData = await existingDataResponse.json();
         if (existingData && existingData.length > 0) {
-          console.log("Using existing extracted data for document:", documentId);
-          return new Response(
-            JSON.stringify(existingData[0].extracted_data),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          // Delete the existing cached extraction if it contains placeholder data
+          if (existingData[0].extracted_data && 
+              typeof existingData[0].extracted_data.summary === 'string' && 
+              existingData[0].extracted_data.summary.includes('placeholder')) {
+            
+            console.log("Found placeholder data for document:", documentId, "- deleting it to force re-extraction");
+            
+            await fetch(
+              `${supabaseUrl}/rest/v1/cv_extracted_data?id=eq.${existingData[0].id}`,
+              {
+                method: 'DELETE',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+          } else {
+            console.log("Using existing extracted data for document:", documentId);
+            return new Response(
+              JSON.stringify(existingData[0].extracted_data),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
       }
     } catch (err) {
@@ -141,11 +161,21 @@ serve(async (req) => {
       );
     }
     
-    // Get file content as text or blob depending on the file type
+    let fileContent;
+    let fileContentDescription;
+    
     console.log("Document file type:", document.file_type);
-    const fileContent = document.file_type?.includes('pdf') 
-      ? await fileResponse.blob()
-      : await fileResponse.text();
+    
+    // Handle different file types
+    if (document.file_type?.includes('pdf')) {
+      // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
+      fileContent = await fileResponse.blob();
+      fileContentDescription = `This is a PDF document named "${document.filename}". As you don't have direct PDF parsing capabilities, please inform the user that PDF extraction is currently limited, and they should consider uploading a text-based CV for better results.`;
+    } else {
+      // For text documents, extract the content
+      fileContent = await fileResponse.text();
+      fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+    }
     
     // Use OpenAI to extract data from the CV
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -159,17 +189,11 @@ serve(async (req) => {
     
     console.log("Calling OpenAI to extract CV data...");
     
-    // For PDFs, we'd need additional processing (potentially through a PDF parsing library)
-    // For now, we'll handle text content (like plain text or assuming we've extracted text from a PDF)
-    const textContent = document.file_type?.includes('pdf')
-      ? `[This is a PDF file named ${document.filename}]` // In a real implementation, we'd extract text from the PDF
-      : fileContent;
-    
     // Create a prompt for OpenAI to extract structured data from the CV text
     const prompt = `
       Extract detailed structured data from this CV/resume:
       
-      ${typeof textContent === 'string' ? textContent.substring(0, 15000) : ''} ${typeof textContent === 'string' && textContent.length > 15000 ? '... [truncated]' : ''}
+      ${fileContentDescription}
       
       Return a complete JSON object with the following structure:
       {
@@ -222,8 +246,14 @@ serve(async (req) => {
         ]
       }
       
-      Be extremely thorough and extract as much detail as possible. The skills, languages, experience, and education fields should be comprehensive lists.
-      If any field can't be determined from the CV, use null or an empty array as appropriate. Ensure the output is valid JSON.
+      IMPORTANT INSTRUCTIONS:
+      - Be extremely thorough and extract as much detail as possible. The skills, languages, experience, and education fields should be comprehensive lists.
+      - If a field can't be determined from the CV, use null or an empty array as appropriate. 
+      - Do not make up or generate fictional data for any field.
+      - If you cannot extract meaningful information (especially for PDFs), set the respective fields to null and DO NOT generate placeholder or fictional data.
+      - DO NOT include a message saying the file couldn't be processed - just return the data structure with null values for fields you couldn't extract.
+      - Ensure the output is valid JSON.
+      - Fields can be null but the overall structure should be maintained.
     `;
     
     try {
@@ -238,11 +268,11 @@ serve(async (req) => {
           messages: [
             { 
               role: 'system', 
-              content: 'You are a CV parsing assistant that extracts structured information from resumes and CVs. Return ONLY valid JSON without any other text.' 
+              content: 'You are a CV parsing assistant that extracts structured information from resumes and CVs. Return ONLY valid JSON without any other text. Never fabricate data - if you cannot extract information, return null values or empty arrays.' 
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.3,
+          temperature: 0.1, // Using a very low temperature for more deterministic, factual responses
           response_format: { type: "json_object" }
         })
       });
@@ -270,6 +300,25 @@ serve(async (req) => {
       let extractedData;
       try {
         extractedData = JSON.parse(openAIData.choices[0].message.content);
+        
+        // Check if the extraction was meaningful or just null/empty values
+        const hasRealContent = 
+          (extractedData.fullName && extractedData.fullName !== document.filename.replace(/\.pdf$/i, '')) ||
+          (extractedData.summary && !extractedData.summary.includes('placeholder')) ||
+          (extractedData.skills && extractedData.skills.length > 0 && !extractedData.skills.includes('Communication')) ||
+          (extractedData.experience && extractedData.experience.length > 0);
+        
+        if (!hasRealContent) {
+          console.log("Extraction resulted in minimal or no useful data");
+          return new Response(
+            JSON.stringify({ 
+              error: "Could not extract meaningful data from this document", 
+              documentName: document.filename 
+            }),
+            { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         console.log("Successfully extracted CV data");
       } catch (error) {
         console.error("Error parsing OpenAI response as JSON:", error);
@@ -279,7 +328,7 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    
+      
       // Store the extracted data in a dedicated table for future use
       try {
         // Check if entry exists for this user and document
