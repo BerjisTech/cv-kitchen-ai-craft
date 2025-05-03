@@ -10,7 +10,7 @@ interface LinkedInData {
   coursesData?: any;
 }
 
-// Process LinkedIn data from JSON files
+// Process LinkedIn data from JSON or CSV files
 export async function processLinkedInFiles(files: File[]): Promise<LinkedInData | null> {
   try {
     const fileContents: { [key: string]: any } = {};
@@ -18,8 +18,15 @@ export async function processLinkedInFiles(files: File[]): Promise<LinkedInData 
     // Read all files
     for (const file of files) {
       try {
-        const content = await readFileAsJson(file);
         const fileName = file.name.toLowerCase();
+        const isCSV = fileName.endsWith('.csv');
+        
+        let content;
+        if (isCSV) {
+          content = await readFileAsCSV(file);
+        } else {
+          content = await readFileAsJson(file);
+        }
         
         if (fileName.includes('profile')) {
           fileContents.profileData = content;
@@ -40,7 +47,7 @@ export async function processLinkedInFiles(files: File[]): Promise<LinkedInData 
     
     // We require at least the profile data
     if (!fileContents.profileData) {
-      toast.error("Profile data is required. Please include the Profile.json file.");
+      toast.error("Profile data is required. Please include the Profile.json or Profile.csv file.");
       return null;
     }
     
@@ -63,7 +70,7 @@ export async function processLinkedInZip(zipFile: File): Promise<LinkedInData | 
   try {
     // For this implementation, we'll refer users to upload individual JSON files
     // A full zip extraction would require additional libraries
-    toast.error("Zip file processing is not supported yet. Please extract and upload individual JSON files.");
+    toast.error("Zip file processing is not supported yet. Please extract and upload individual JSON or CSV files.");
     return null;
   } catch (error) {
     console.error("Error processing LinkedIn zip:", error);
@@ -152,6 +159,91 @@ async function readFileAsJson(file: File): Promise<any> {
     
     reader.readAsText(file);
   });
+}
+
+// Read file as CSV and convert to object
+async function readFileAsCSV(file: File): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const csvText = e.target?.result as string;
+        const lines = csvText.split('\n');
+        
+        if (lines.length === 0) {
+          reject(new Error(`Empty CSV file: ${file.name}`));
+          return;
+        }
+        
+        // Extract headers (first line)
+        const headers = lines[0].split(',').map(header => 
+          header.trim().replace(/^"|"$/g, '') // Remove quotes if present
+        );
+        
+        // Process data lines
+        const results = [];
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue; // Skip empty lines
+          
+          // Split by comma, but respect quoted values that may contain commas
+          const values = parseCSVLine(lines[i]);
+          
+          if (values.length !== headers.length) {
+            console.warn(`Line ${i} has ${values.length} values but headers has ${headers.length} columns`);
+            continue;
+          }
+          
+          const row: Record<string, string> = {};
+          headers.forEach((header, index) => {
+            row[header] = values[index];
+          });
+          results.push(row);
+        }
+        
+        // If it's a single entry (like profile), return the first item
+        if (file.name.toLowerCase().includes('profile') && results.length === 1) {
+          resolve(results[0]);
+        } else {
+          resolve(results);
+        }
+      } catch (error) {
+        reject(new Error(`Error parsing CSV in file: ${file.name}`));
+      }
+    };
+    
+    reader.onerror = () => {
+      reject(new Error(`Error reading file: ${file.name}`));
+    };
+    
+    reader.readAsText(file);
+  });
+}
+
+// Parse CSV line handling quoted values
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let currentValue = '';
+  let insideQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      // End of value
+      result.push(currentValue.trim().replace(/^"|"$/g, ''));
+      currentValue = '';
+    } else {
+      currentValue += char;
+    }
+  }
+  
+  // Add the last value
+  result.push(currentValue.trim().replace(/^"|"$/g, ''));
+  
+  return result;
 }
 
 // Fetch user's LinkedIn data

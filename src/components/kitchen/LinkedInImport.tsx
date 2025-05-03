@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Linkedin, Upload, FileText, ArrowRight } from 'lucide-react';
+import { Linkedin, Upload, FileText, ArrowRight, FileJson, FileCsv } from 'lucide-react';
 import { processLinkedInFiles, saveLinkedInData } from '@/services/linkedinImportService';
 import { toast } from '@/components/ui/sonner';
 
@@ -64,20 +64,23 @@ export const LinkedInImport = () => {
                     className="text-blue-500 hover:underline">
                 LinkedIn's Download Your Data
               </a></li>
-              <li>Click "Request archive" and select "The works" or "JSON format"</li>
+              <li>Click "Request archive" and select "The works" (JSON or CSV format)</li>
               <li>Wait for the email from LinkedIn (usually within 10 minutes)</li>
               <li>Download the archive and extract the files</li>
-              <li>Upload the relevant JSON files below (Profile.json, Positions.json, etc.)</li>
+              <li>Upload the relevant files below (Profile.json/csv, Positions.json/csv, etc.)</li>
             </ol>
           </div>
           
           <div className="border-2 border-dashed border-muted rounded-md p-4">
             <div className="flex flex-col items-center gap-3 py-4">
-              <FileText className="h-10 w-10 text-muted-foreground" />
+              <div className="flex gap-2">
+                <FileJson className="h-10 w-10 text-blue-500" />
+                <FileCsv className="h-10 w-10 text-green-500" />
+              </div>
               <div className="text-center">
                 <p className="font-medium">Select Files</p>
                 <p className="text-sm text-muted-foreground">
-                  Upload Profile.json, Positions.json, Education.json, etc.
+                  Upload Profile, Positions, Education files (JSON or CSV format)
                 </p>
               </div>
               <Button 
@@ -92,7 +95,7 @@ export const LinkedInImport = () => {
                 type="file" 
                 ref={fileInputRef} 
                 multiple 
-                accept="application/json" 
+                accept="application/json,text/csv" 
                 className="hidden" 
                 onChange={handleFileChange} 
               />
@@ -103,12 +106,18 @@ export const LinkedInImport = () => {
             <div className="bg-muted/30 p-3 rounded">
               <p className="font-medium mb-2">Selected files:</p>
               <ul className="text-sm space-y-1">
-                {selectedFiles.map((file, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                    {file.name}
-                  </li>
-                ))}
+                {selectedFiles.map((file, index) => {
+                  const isCSV = file.name.toLowerCase().endsWith('.csv');
+                  return (
+                    <li key={index} className="flex items-center gap-2">
+                      {isCSV ? 
+                        <FileCsv className="h-4 w-4 text-green-500" /> : 
+                        <FileJson className="h-4 w-4 text-blue-500" />
+                      }
+                      {file.name}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
