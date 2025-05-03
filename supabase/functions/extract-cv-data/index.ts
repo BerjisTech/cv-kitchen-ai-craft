@@ -35,23 +35,32 @@ serve(async (req) => {
     }
 
     // Get document information
-    const documentResponse = await fetch(
-      `${supabaseUrl}/rest/v1/user_documents?id=eq.${documentId}&select=*`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
+    let documentResponse;
+    try {
+      documentResponse = await fetch(
+        `${supabaseUrl}/rest/v1/user_documents?id=eq.${documentId}&select=*`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }
-    );
+      );
+    } catch (fetchError) {
+      console.error("Network error fetching document:", fetchError);
+      return new Response(
+        JSON.stringify({ error: `Network error: Could not connect to database` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!documentResponse.ok) {
       const errorText = await documentResponse.text();
       console.error("Failed to retrieve document:", errorText);
       return new Response(
-        JSON.stringify({ error: `Failed to retrieve document: ${errorText}` }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Failed to retrieve document info: ${errorText}` }),
+        { status: documentResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -59,7 +68,7 @@ serve(async (req) => {
     
     if (!documents || documents.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Document not found' }),
+        JSON.stringify({ error: 'Document not found in database' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -103,7 +112,7 @@ serve(async (req) => {
                 }
               }
             );
-          } else if (!extractedData.summary || !extractedData.summary.includes('placeholder')) {
+          } else if (!extractedData.summary?.includes('placeholder')) {
             console.log("Using existing extracted data for document:", documentId);
             return new Response(
               JSON.stringify(existingData[0].extracted_data),
@@ -118,28 +127,43 @@ serve(async (req) => {
     }
     
     // Generate a signed URL to download the document
-    let signedURLRequest = `${supabaseUrl}/storage/v1/object/sign/career-uploads/${document.filepath}`;
+    const signedURLRequest = `${supabaseUrl}/storage/v1/object/sign/career-uploads/${document.filepath}`;
     console.log("Generating signed URL from:", signedURLRequest);
     
-    const storageResponse = await fetch(
-      signedURLRequest,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ expiresIn: 300 })
-      }
-    );
+    let storageResponse;
+    try {
+      storageResponse = await fetch(
+        signedURLRequest,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ expiresIn: 300 })
+        }
+      );
+    } catch (signError) {
+      console.error("Network error generating signed URL:", signError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Network error: Could not generate file access URL`,
+          documentName: document.filename
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!storageResponse.ok) {
       const errorText = await storageResponse.text();
       console.error("Failed to get document download URL:", errorText);
       return new Response(
-        JSON.stringify({ error: `Failed to access document storage: ${errorText}`, documentName: document.filename }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: `Storage error: File may not exist in the storage bucket`,
+          documentName: document.filename
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -154,12 +178,25 @@ serve(async (req) => {
     console.log("Using full signed URL:", fullSignedUrl);
     
     // Download the document content
-    const fileResponse = await fetch(fullSignedUrl);
+    let fileResponse;
+    try {
+      fileResponse = await fetch(fullSignedUrl);
+    } catch (downloadError) {
+      console.error("Network error downloading file:", downloadError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Network error: Could not download the file`,
+          documentName: document.filename
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     if (!fileResponse.ok) {
       console.error("Failed to download document content, status:", fileResponse.status);
       return new Response(
         JSON.stringify({ 
-          error: `Failed to download document: the file seems to be inaccessible or the URL has expired`,
+          error: `Failed to download document: the file seems to be inaccessible`,
           documentName: document.filename 
         }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,13 +211,53 @@ serve(async (req) => {
     try {
       // Handle different file types
       if (document.file_type?.includes('pdf')) {
-        // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
-        fileContent = await fileResponse.blob();
-        fileContentDescription = `This is a PDF document named "${document.filename}" that contains a CV/resume.`;
+        try {
+          // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
+          fileContent = await fileResponse.blob();
+          if (fileContent.size === 0) {
+            return new Response(
+              JSON.stringify({ 
+                error: `The PDF file appears to be empty or corrupted`,
+                documentName: document.filename 
+              }),
+              { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          fileContentDescription = `This is a PDF document named "${document.filename}" that contains a CV/resume.`;
+        } catch (pdfError) {
+          console.error("Error processing PDF:", pdfError);
+          return new Response(
+            JSON.stringify({ 
+              error: `Failed to process PDF document: ${pdfError.message}`,
+              documentName: document.filename 
+            }),
+            { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       } else {
-        // For text documents, extract the content
-        fileContent = await fileResponse.text();
-        fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+        try {
+          // For text documents, extract the content
+          fileContent = await fileResponse.text();
+          if (!fileContent || fileContent.length < 50) {
+            return new Response(
+              JSON.stringify({ 
+                error: `The document appears to be empty or contains too little text to process`,
+                documentName: document.filename 
+              }),
+              { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+        } catch (textError) {
+          console.error("Error processing text document:", textError);
+          return new Response(
+            JSON.stringify({ 
+              error: `Failed to process text document: ${textError.message}`,
+              documentName: document.filename 
+            }),
+            { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
     } catch (fileError) {
       console.error("Error reading document content:", fileError);
@@ -289,7 +366,7 @@ serve(async (req) => {
             },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.0, // Using zero temperature for deterministic, factual responses
+          temperature: 0, // Using zero temperature for deterministic, factual responses
           response_format: { type: "json_object" }
         })
       });
@@ -298,7 +375,7 @@ serve(async (req) => {
         const errorText = await openAIResponse.text();
         console.error("OpenAI API error:", errorText);
         return new Response(
-          JSON.stringify({ error: `OpenAI API error: ${errorText}` }),
+          JSON.stringify({ error: `AI processing error: ${errorText.substring(0, 100)}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -309,7 +386,7 @@ serve(async (req) => {
       if (!openAIData.choices || openAIData.choices.length === 0) {
         console.error("No content generated from OpenAI");
         return new Response(
-          JSON.stringify({ error: "Failed to extract data from CV" }),
+          JSON.stringify({ error: "Failed to extract data from CV", documentName: document.filename }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -332,10 +409,10 @@ serve(async (req) => {
         
         // Check if the extraction was meaningful or just null/empty values
         const hasRealContent = 
-          (extractedData.fullName && extractedData.fullName !== document.filename.replace(/\.pdf$/i, '')) ||
-          (extractedData.summary && !extractedData.summary.includes('placeholder')) ||
+          (extractedData.fullName && extractedData.fullName.length > 3) ||
+          (extractedData.summary && extractedData.summary.length > 50 && !extractedData.summary.includes('placeholder')) ||
           (extractedData.skills && extractedData.skills.length > 2) ||
-          (extractedData.experience && extractedData.experience.length > 0);
+          (extractedData.experience && extractedData.experience.length > 0 && extractedData.experience[0].company);
         
         if (!hasRealContent) {
           console.log("Extraction resulted in minimal or no useful data");
@@ -360,14 +437,14 @@ serve(async (req) => {
         console.error("Error parsing OpenAI response as JSON:", error);
         console.error("Response content:", openAIData.choices[0].message.content);
         return new Response(
-          JSON.stringify({ error: "Failed to parse extracted data" }),
+          JSON.stringify({ error: "Failed to parse extracted data", documentName: document.filename }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } catch (openAIError) {
       console.error("OpenAI processing error:", openAIError);
       return new Response(
-        JSON.stringify({ error: `Failed to process CV with AI: ${openAIError.message}` }),
+        JSON.stringify({ error: `Failed to process CV with AI: ${openAIError.message}`, documentName: document.filename }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
