@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -46,7 +47,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ collapsed, onToggleCol
   }, [user, userRole, activeRole, isAdmin]);
   
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Kitchen', href: '/kitchen', icon: Utensils },
     { name: 'Shelf', href: '/shelf', icon: BookOpen },
     { name: 'Analytics', href: '/analytics', icon: LineChart },

@@ -17,13 +17,13 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
         .from('cv_extracted_data')
         .select('extracted_data')
         .eq('document_id', documentId)
-        .limit(1)
-        .single();
+        .maybeSingle();
       
       existingData = data;
       existingError = error;
     } catch (e) {
-      // Ignore errors, we'll just proceed with extraction
+      console.error("Error checking for existing extracted data:", e);
+      // We'll continue with extraction despite this error
     }
     
     // If we have existing data, use it unless it's a placeholder
@@ -115,9 +115,11 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       }
       
       if (functionError.response) {
-        console.error("Function response:", functionError.response);
+        console.error("Function response object:", functionError.response);
         try {
+          const responseStatus = functionError.response.status;
           const responseBody = await functionError.response.text();
+          console.error(`Function response status: ${responseStatus}`);
           console.error("Function response body:", responseBody);
           
           // Try to parse as JSON for more details
@@ -138,6 +140,7 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
           }
         } catch (e) {
           // Ignore errors reading response
+          console.error("Error parsing response:", e);
         }
       }
       
@@ -211,8 +214,11 @@ export async function enhanceUserProfile(): Promise<boolean> {
       
       // Try to extract response data if available
       if (functionError.response) {
+        console.error("Error response object:", functionError.response);
         try {
+          const responseStatus = functionError.response.status;
           const responseBody = await functionError.response.text();
+          console.error(`Error response status: ${responseStatus}`);
           console.error("Error response body:", responseBody);
           
           try {
@@ -232,6 +238,7 @@ export async function enhanceUserProfile(): Promise<boolean> {
           }
         } catch (e) {
           // Ignore errors reading response
+          console.error("Error parsing response:", e);
         }
       }
       
