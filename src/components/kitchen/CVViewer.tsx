@@ -6,6 +6,10 @@ import { Card } from '@/components/ui/card';
 import { getTailoredCV, updateTailoredCV } from '@/services/tailoredCVService';
 import { TailoredCV } from '@/types/tailoredCV';
 import { FileText, Download, ArrowLeft, FileEdit } from 'lucide-react';
+import { CVRenderer } from '@/components/cv/CVRenderer';
+import { exportToPDF } from '@/utils/exportToPDF';
+import { toast } from '@/components/ui/sonner';
+import { CVData } from '@/types/CVData';
 
 export const CVViewer: React.FC = () => {
   const { cvId } = useParams<{ cvId: string }>();
@@ -14,6 +18,8 @@ export const CVViewer: React.FC = () => {
   const [cv, setCV] = useState<TailoredCV | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('modern');
+  const [cvData, setCvData] = useState<CVData | null>(null);
+  const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
   
   useEffect(() => {
     const loadCV = async () => {
@@ -25,9 +31,42 @@ export const CVViewer: React.FC = () => {
         if (cvData) {
           setCV(cvData);
           setSelectedTemplate(cvData.template || 'modern');
+          
+          // Transform CV data to CVData format
+          const formattedData: CVData = {
+            fullName: cvData.cv_content?.name || cvData.cv_content?.header?.name || 'Your Name',
+            title: cvData.cv_content?.title || cvData.cv_content?.header?.title || 'Professional Title',
+            contact: {
+              email: cvData.cv_content?.email || cvData.cv_content?.contact?.email || '',
+              phone: cvData.cv_content?.phone || cvData.cv_content?.contact?.phone || '',
+              location: cvData.cv_content?.location || cvData.cv_content?.contact?.location || '',
+              website: cvData.cv_content?.website || cvData.cv_content?.contact?.website || '',
+              linkedin: cvData.cv_content?.linkedin || cvData.cv_content?.contact?.linkedin || '',
+              github: cvData.cv_content?.github || cvData.cv_content?.contact?.github || '',
+            },
+            summary: cvData.cv_content?.summary || 'Your professional summary tailored for this job.',
+            skills: cvData.cv_content?.skills || ['Skill 1', 'Skill 2', 'Skill 3'],
+            experience: (cvData.cv_content?.experience || []).map((exp: any) => ({
+              company: exp.company || 'Company Name',
+              role: exp.title || 'Job Title',
+              start: exp.period?.startDate || exp.period?.split(' - ')[0] || 'Start Date',
+              end: exp.period?.endDate || (exp.period?.split(' - ')[1] || ''),
+              description: exp.description || 'Job description'
+            })),
+            education: (cvData.cv_content?.education || []).map((edu: any) => ({
+              school: edu.institution || 'School Name',
+              degree: edu.degree || 'Degree Name',
+              start: edu.period?.startDate || edu.period?.split(' - ')[0] || 'Start Date',
+              end: edu.period?.endDate || (edu.period?.split(' - ')[1] || ''),
+              description: edu.description || ''
+            })),
+          };
+          
+          setCvData(formattedData);
         }
       } catch (error) {
         console.error('Error loading CV:', error);
+        toast.error('Failed to load the CV');
       } finally {
         setIsLoading(false);
       }
@@ -44,21 +83,36 @@ export const CVViewer: React.FC = () => {
       const updatedCV = await updateTailoredCV(cvId, templateName);
       if (updatedCV) {
         setCV(updatedCV);
+        toast.success(`Template changed to ${templateName}`);
       }
     } catch (error) {
       console.error('Error updating template:', error);
+      toast.error('Failed to update template');
     }
   };
   
-  const handleDownloadPDF = () => {
-    // Implement PDF download functionality
-    console.log('Download PDF', cv);
-    // This would normally trigger a PDF generation and download
+  const handleDownloadPDF = async () => {
+    if (!cv || !cvData) {
+      toast.error('CV data is not available for download');
+      return;
+    }
+    
+    setIsPdfGenerating(true);
+    try {
+      const filename = `CV-${cvData.fullName.replace(/\s+/g, '_')}-${selectedTemplate}.pdf`;
+      await exportToPDF('cv-document', filename);
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsPdfGenerating(false);
+    }
   };
   
   const handleGenerateCoverLetter = () => {
     // Implement cover letter generation
-    console.log('Generate cover letter for', cv);
+    toast.info('Cover letter generation coming soon');
     // This would navigate to cover letter generation page or modal
   };
   
@@ -70,7 +124,7 @@ export const CVViewer: React.FC = () => {
     );
   }
   
-  if (!cv) {
+  if (!cv || !cvData) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -107,8 +161,10 @@ export const CVViewer: React.FC = () => {
             variant="outline"
             size="sm"
             className="gap-2"
+            disabled={isPdfGenerating}
           >
-            <Download className="h-4 w-4" /> Download PDF
+            <Download className="h-4 w-4" /> 
+            {isPdfGenerating ? 'Generating...' : 'Download PDF'}
           </Button>
           
           <Button
@@ -125,7 +181,7 @@ export const CVViewer: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Your Tailored CV</h1>
         <p className="text-muted-foreground">
-          Customized for the job description.
+          Customized for the job description using {selectedTemplate} template.
         </p>
       </div>
       
@@ -134,7 +190,7 @@ export const CVViewer: React.FC = () => {
           <Card className="p-4">
             <h3 className="mb-4 font-medium">Template</h3>
             <div className="space-y-2">
-              {['modern', 'classic', 'minimal', 'creative'].map((template) => (
+              {['modern', 'classic', 'creative', 'minimal'].map((template) => (
                 <div
                   key={template}
                   className={`cursor-pointer rounded-md border p-3 ${
@@ -157,7 +213,7 @@ export const CVViewer: React.FC = () => {
         </div>
         
         <div className="md:col-span-3">
-          <Card className="overflow-hidden">
+          <div className="mx-auto bg-white shadow-xl overflow-hidden rounded-lg">
             <div className="border-b bg-muted/50 p-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-medium">CV Preview</h2>
@@ -167,54 +223,12 @@ export const CVViewer: React.FC = () => {
               </div>
             </div>
             
-            <div className="p-6">
-              {/* CV Content would be rendered here based on the template */}
-              {/* This is just a placeholder representation */}
-              <div className="space-y-6">
-                <div className="border-b pb-4">
-                  <h1 className="text-2xl font-bold">{cv.cv_content?.name || 'Your Name'}</h1>
-                  <p className="text-muted-foreground">{cv.cv_content?.title || 'Professional Title'}</p>
-                </div>
-                
-                <div>
-                  <h2 className="mb-3 text-lg font-semibold">Summary</h2>
-                  <p>{cv.cv_content?.summary || 'Your professional summary tailored for this job.'}</p>
-                </div>
-                
-                <div>
-                  <h2 className="mb-3 text-lg font-semibold">Experience</h2>
-                  {(cv.cv_content?.experience || []).map((exp: any, index: number) => (
-                    <div key={index} className="mb-4">
-                      <div className="flex justify-between">
-                        <h3 className="font-medium">{exp.title || 'Job Title'}</h3>
-                        <span className="text-sm text-muted-foreground">
-                          {exp.period || 'Time Period'}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {exp.company || 'Company Name'}
-                      </p>
-                      <p className="mt-1 text-sm">{exp.description || 'Job description'}</p>
-                    </div>
-                  ))}
-                </div>
-                
-                <div>
-                  <h2 className="mb-3 text-lg font-semibold">Skills</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {(cv.cv_content?.skills || ['Skill 1', 'Skill 2', 'Skill 3']).map((skill: string, index: number) => (
-                      <span
-                        key={index}
-                        className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+            <div className="overflow-hidden">
+              <div className="scale-[0.7] origin-top-left ml-[-15%] mt-[-15%] w-[142.85%]">
+                <CVRenderer template={selectedTemplate} cvData={cvData} id="cv-document" />
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

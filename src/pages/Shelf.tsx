@@ -25,24 +25,28 @@ const Shelf = () => {
       name: 'Modern',
       description: 'A clean, modern design with a touch of color.',
       isPremium: false,
+      template: 'modern',
       image: 'https://images.unsplash.com/photo-1569698145698-0e5d2a12cab5?q=80&w=200'
     },
     {
-      name: 'Professional',
+      name: 'Classic',
       description: 'A traditional, professional layout suitable for corporate roles.',
       isPremium: false,
+      template: 'classic',
       image: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?q=80&w=200'
     },
     {
       name: 'Creative',
       description: 'A bold, creative design to help you stand out.',
       isPremium: true,
+      template: 'creative',
       image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=200'
     },
     {
-      name: 'Minimalist',
+      name: 'Minimal',
       description: 'A simple, minimalist design focusing on content.',
       isPremium: false,
+      template: 'minimal',
       image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=200'
     }
   ];
@@ -85,6 +89,12 @@ const Shelf = () => {
   
   const handleViewCV = (cvId: string) => {
     navigate(`/kitchen/cv-viewer/${cvId}`);
+  };
+
+  const handleUseTemplate = (template: string) => {
+    // Navigate to kitchen with template parameter
+    navigate(`/kitchen?template=${template}`);
+    toast.info(`Selected ${template} template. Create a new CV to use it.`);
   };
 
   const formatDate = (dateString: string) => {
@@ -310,7 +320,12 @@ const Shelf = () => {
                 <CardContent className="p-4">
                   <h3 className="font-semibold mb-1">{template.name}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{template.description}</p>
-                  <Button className="w-full bg-blue-500 hover:bg-blue-600">Use Template</Button>
+                  <Button 
+                    className="w-full bg-blue-500 hover:bg-blue-600"
+                    onClick={() => handleUseTemplate(template.template)}
+                  >
+                    Use Template
+                  </Button>
                 </CardContent>
               </Card>
             ))}
