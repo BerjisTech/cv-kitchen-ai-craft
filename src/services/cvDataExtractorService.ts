@@ -40,7 +40,7 @@ interface ExtractedCVData {
   }>;
 }
 
-// New function to provide CV context data for job analysis
+// Function to provide CV context data for job analysis
 export const getAllCVContext = async (): Promise<string> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -202,7 +202,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
-        .then(response => response);
+        .then(response => Promise.resolve(response));
       
       updates.push(profileUpdatePromise);
     }
@@ -236,7 +236,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         const skillsUpdatePromise = supabase
           .from('user_skills')
           .insert(skillsData)
-          .then(response => response);
+          .then(response => Promise.resolve(response));
         
         updates.push(skillsUpdatePromise);
       }
@@ -280,7 +280,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           const experienceUpdatePromise = supabase
             .from('user_experience')
             .insert([experienceEntry])
-            .then(response => response);
+            .then(response => Promise.resolve(response));
           
           updates.push(experienceUpdatePromise);
         }
@@ -324,7 +324,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           const educationUpdatePromise = supabase
             .from('user_education')
             .insert([educationEntry])
-            .then(response => response);
+            .then(response => Promise.resolve(response));
           
           updates.push(educationUpdatePromise);
         }
@@ -358,7 +358,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
         const languagesUpdatePromise = supabase
           .from('user_languages')
           .insert(languagesData)
-          .then(response => response);
+          .then(response => Promise.resolve(response));
         
         updates.push(languagesUpdatePromise);
       }
@@ -398,7 +398,7 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           const certUpdatePromise = supabase
             .from('user_certifications')
             .insert([certEntry])
-            .then(response => response);
+            .then(response => Promise.resolve(response));
           
           updates.push(certUpdatePromise);
         }
