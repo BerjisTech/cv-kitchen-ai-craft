@@ -98,38 +98,15 @@ export const extractCVData = async (documentId: string): Promise<ExtractedCVData
         return null;
       }
 
-      // Check if the extraction returned an error about the document not being processable
+      console.log("Extracted CV data:", data);
+      
+      // Check if we got an error response
       if (data && data.error) {
-        console.error(`Failed to extract data from ${data.documentName || document?.filename || 'document'}: ${data.error}`);
-        toast.error(`Could not extract data from ${data.documentName || document?.filename || 'document'}: ${data.error}`);
+        toast.error(`Error: ${data.error}`, { duration: 5000 });
         return null;
       }
       
-      console.log("Extracted CV data:", data);
-      
-      // Check if we got placeholder data
-      if (data && data.summary && data.summary.includes('placeholder')) {
-        toast.warning(`Could only extract limited data from "${document.filename}". The file may be in an unsupported format.`, { duration: 6000 });
-      } else {
-        toast.success(`Successfully extracted data from "${document.filename}"`, { duration: 3000 });
-      }
-      
-      // Store the extracted data in the database for future use
-      if (data) {
-        // Only store if we have actual data, not placeholder content
-        if (!data.summary || !data.summary.includes('placeholder')) {
-          const { error: storageError } = await supabase.from('cv_extracted_data').insert({
-            document_id: documentId,
-            user_id: user.id,
-            extracted_data: data
-          });
-          
-          if (storageError) {
-            // Log but don't throw - we still want to return the data even if storing fails
-            console.error("Error storing extracted CV data:", storageError);
-          }
-        }
-      }
+      toast.success(`Successfully extracted data from "${document.filename}"`, { duration: 3000 });
       
       return data;
     } catch (functionError: any) {

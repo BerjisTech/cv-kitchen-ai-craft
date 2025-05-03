@@ -16,92 +16,116 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
 
     console.log("Updating profile with extracted CV data");
 
-    // Start a batch of database operations
-    const updates: Promise<any>[] = [];
-
     // 1. Update basic profile information
-    if (cvData.fullName || cvData.title || cvData.summary || cvData.contact) {
-      console.log("Updating basic profile information");
-      const profileUpdateOperation = supabase
-        .from('profiles')
-        .update({
-          full_name: cvData.fullName || undefined,
-          role: cvData.title || undefined,
-          bio: cvData.summary || undefined,
-          location: cvData.contact?.location || undefined,
-          website: cvData.contact?.website || undefined,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+    if (cvData.personal_info?.full_name || 
+        cvData.personal_info?.location || 
+        cvData.summary || 
+        cvData.personal_info?.website) {
       
-      updates.push(Promise.resolve(profileUpdateOperation));
+      console.log("Updating basic profile information");
+      
+      const profileUpdate: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (cvData.personal_info?.full_name) {
+        profileUpdate.full_name = cvData.personal_info.full_name;
+      }
+      
+      if (cvData.personal_info?.location) {
+        profileUpdate.location = cvData.personal_info.location;
+      }
+      
+      if (cvData.summary) {
+        profileUpdate.bio = cvData.summary;
+      }
+      
+      if (cvData.personal_info?.website) {
+        profileUpdate.website = cvData.personal_info.website;
+      }
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('id', user.id);
+        
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+      }
     }
 
     // 2. Process and store skills
     if (cvData.skills && cvData.skills.length > 0) {
       console.log(`Processing ${cvData.skills.length} skills`);
       
-      // First, clear existing skills to avoid duplicates
-      const clearSkillsOperation = supabase
+      // First, clear existing skills
+      const { error: clearSkillsError } = await supabase
         .from('user_skills')
         .delete()
         .eq('user_id', user.id)
         .eq('source', 'cv_extraction');
         
-      updates.push(Promise.resolve(clearSkillsOperation));
+      if (clearSkillsError) {
+        console.error("Error clearing existing skills:", clearSkillsError);
+      }
       
       // Add all skills from the CV
       const skillsData = cvData.skills.map(skill => ({
         user_id: user.id,
-        name: skill,
+        name: skill.name,
         source: 'cv_extraction',
-        // Generate a random skill level between 70-100
-        level: Math.floor(Math.random() * 31) + 70
+        level: skill.level || Math.floor(Math.random() * 31) + 70 // Generate a random skill level if not provided
       }));
       
       // Split into batches of 50 to avoid potential request size limits
       for (let i = 0; i < skillsData.length; i += 50) {
         const batch = skillsData.slice(i, i + 50);
-        const skillsUpdateOperation = supabase
+        const { error: skillsError } = await supabase
           .from('user_skills')
           .insert(batch);
-        
-        updates.push(Promise.resolve(skillsUpdateOperation));
+          
+        if (skillsError) {
+          console.error("Error inserting skills batch:", skillsError);
+        }
       }
     }
 
     // 3. Process and store work experience
-    if (cvData.experience && cvData.experience.length > 0) {
-      console.log(`Processing ${cvData.experience.length} work experiences`);
+    if (cvData.work_experience && cvData.work_experience.length > 0) {
+      console.log(`Processing ${cvData.work_experience.length} work experiences`);
       
       // Clear existing experience data from CV extraction
-      const clearExperienceOperation = supabase
+      const { error: clearExperienceError } = await supabase
         .from('user_experience')
         .delete()
         .eq('user_id', user.id)
         .eq('source', 'cv_extraction');
         
-      updates.push(Promise.resolve(clearExperienceOperation));
+      if (clearExperienceError) {
+        console.error("Error clearing existing experience:", clearExperienceError);
+      }
       
       // Process each experience entry
-      for (const exp of cvData.experience) {
+      for (const exp of cvData.work_experience) {
         if (!exp.company || !exp.role) continue;
         
         const experienceEntry = {
           user_id: user.id,
           company: exp.company,
           role: exp.role,
-          start_date: exp.start || null,
-          end_date: exp.end || null,
+          start_date: exp.start_date || null,
+          end_date: exp.end_date || null,
           description: exp.description || null,
           source: 'cv_extraction'
         };
         
-        const experienceUpdateOperation = supabase
+        const { error: experienceError } = await supabase
           .from('user_experience')
           .insert([experienceEntry]);
-        
-        updates.push(Promise.resolve(experienceUpdateOperation));
+          
+        if (experienceError) {
+          console.error("Error inserting experience entry:", experienceError);
+        }
       }
     }
 
@@ -110,33 +134,37 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
       console.log(`Processing ${cvData.education.length} education entries`);
       
       // Clear existing education data from CV extraction
-      const clearEducationOperation = supabase
+      const { error: clearEducationError } = await supabase
         .from('user_education')
         .delete()
         .eq('user_id', user.id)
         .eq('source', 'cv_extraction');
         
-      updates.push(Promise.resolve(clearEducationOperation));
+      if (clearEducationError) {
+        console.error("Error clearing existing education:", clearEducationError);
+      }
       
       // Process each education entry
       for (const edu of cvData.education) {
-        if (!edu.school || !edu.degree) continue;
+        if (!edu.institution || !edu.degree) continue;
         
         const educationEntry = {
           user_id: user.id,
-          institution: edu.school,
+          institution: edu.institution,
           degree: edu.degree,
-          start_year: edu.start || null,
-          end_year: edu.end || null,
+          start_year: edu.start_year || null,
+          end_year: edu.end_year || null,
           description: edu.description || null,
           source: 'cv_extraction'
         };
         
-        const educationUpdateOperation = supabase
+        const { error: educationError } = await supabase
           .from('user_education')
           .insert([educationEntry]);
-        
-        updates.push(Promise.resolve(educationUpdateOperation));
+          
+        if (educationError) {
+          console.error("Error inserting education entry:", educationError);
+        }
       }
     }
 
@@ -145,25 +173,29 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
       console.log(`Processing ${cvData.languages.length} languages`);
       
       // Clear existing language data
-      const clearLanguagesOperation = supabase
+      const { error: clearLanguagesError } = await supabase
         .from('user_languages')
         .delete()
         .eq('user_id', user.id);
         
-      updates.push(Promise.resolve(clearLanguagesOperation));
+      if (clearLanguagesError) {
+        console.error("Error clearing existing languages:", clearLanguagesError);
+      }
       
       // Add all languages from the CV
       const languagesData = cvData.languages.map(lang => ({
         user_id: user.id,
         language: lang.language || '',
-        level: lang.proficiency || 'Intermediate'
+        level: lang.level || 'Intermediate'
       }));
       
-      const languagesUpdateOperation = supabase
+      const { error: languagesError } = await supabase
         .from('user_languages')
         .insert(languagesData);
-      
-      updates.push(Promise.resolve(languagesUpdateOperation));
+        
+      if (languagesError) {
+        console.error("Error inserting languages:", languagesError);
+      }
     }
 
     // 6. Process and store certifications
@@ -171,12 +203,14 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
       console.log(`Processing ${cvData.certifications.length} certifications`);
       
       // Clear existing certifications
-      const clearCertificationsOperation = supabase
+      const { error: clearCertificationsError } = await supabase
         .from('user_certifications')
         .delete()
         .eq('user_id', user.id);
         
-      updates.push(Promise.resolve(clearCertificationsOperation));
+      if (clearCertificationsError) {
+        console.error("Error clearing existing certifications:", clearCertificationsError);
+      }
       
       // Process each certification
       for (const cert of cvData.certifications) {
@@ -189,32 +223,18 @@ export const updateProfileWithCVData = async (cvData: ExtractedCVData): Promise<
           date: cert.date || null
         };
         
-        const certUpdateOperation = supabase
+        const { error: certError } = await supabase
           .from('user_certifications')
           .insert([certEntry]);
-        
-        updates.push(Promise.resolve(certUpdateOperation));
+          
+        if (certError) {
+          console.error("Error inserting certification entry:", certError);
+        }
       }
     }
 
-    // Execute all updates and wait for them to complete
-    if (updates.length > 0) {
-      console.log(`Executing ${updates.length} database operations`);
-      const results = await Promise.all(updates);
-      
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        console.error("Errors updating profile data:", errors.map(e => e.error));
-        return false;
-      }
-      
-      console.log("Successfully updated profile with CV data");
-      return true;
-    } else {
-      console.log("No updates to make from CV data");
-      return true;
-    }
+    console.log("Successfully updated profile with CV data");
+    return true;
   } catch (error) {
     console.error('Error in updateProfileWithCVData:', error);
     return false;

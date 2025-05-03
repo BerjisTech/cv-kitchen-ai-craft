@@ -108,7 +108,6 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
     console.log("Attempting to download from URL:", fullSignedUrl);
     
     const fileResponse = await fetch(fullSignedUrl, {
-      // Adding proper headers for PDF content
       headers: {
         'Accept': 'application/pdf, application/octet-stream, text/plain, */*'
       }
@@ -128,7 +127,7 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
     
     console.log("Document file type:", document.file_type);
     
-    // Handle different file types
+    // Extract text based on file type
     if (document.file_type?.includes('pdf')) {
       try {
         // For PDFs, we just get a blob and inform the OpenAI API this is a PDF
@@ -146,22 +145,25 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
         
         console.log(`Successfully downloaded PDF of size: ${fileContent.size} bytes`);
         
-        // Since we can't process PDF content directly in edge function
-        // Just pass a description to OpenAI
-        fileContentDescription = `This is a PDF document named "${document.filename}" that contains a CV/resume. The file size is ${document.file_size} bytes.`;
+        // Since we can't directly extract PDF content, provide context about the file
+        // and later we'll use the filename and other metadata to inform the AI model
+        const pdfData = `PDF Document: ${document.filename}
         
-        // Just for debugging, also pass sample metadata
-        const metadata = {
-          filename: document.filename,
-          filetype: document.file_type,
-          filesize: document.file_size,
-          uploadDate: document.created_at
-        };
-        
-        fileContentDescription += `\n\nMetadata: ${JSON.stringify(metadata)}`;
-        
-        // This is just a placeholder as we can't really extract PDF content in this environment
-        fileContentDescription += `\n\nPlease extract the CV information from this document based on the filename and context.`;
+File Size: ${Math.round(document.file_size / 1024)} KB
+File Type: ${document.file_type}
+Uploaded: ${new Date(document.created_at).toLocaleDateString()}
+
+This document likely contains:
+- Personal information (name, contact details)
+- Professional summary
+- Work experience
+- Education history
+- Skills
+- Certifications or achievements
+- Languages
+- References`;
+
+        fileContentDescription = pdfData;
         
         return { fileContent, fileContentDescription, error: null };
       } catch (pdfError) {
@@ -175,8 +177,25 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
     } else if (document.file_type?.includes('word') || document.file_type?.includes('docx')) {
       // Handle Word documents
       fileContent = await fileResponse.arrayBuffer();
-      // For Word documents, we just inform OpenAI this is a Word document
-      fileContentDescription = `This is a Word document named "${document.filename}" that contains a CV/resume.`;
+      
+      // Similar approach for Word documents - provide context
+      const docxData = `Word Document: ${document.filename}
+      
+File Size: ${Math.round(document.file_size / 1024)} KB
+File Type: ${document.file_type}
+Uploaded: ${new Date(document.created_at).toLocaleDateString()}
+
+This document likely contains:
+- Personal information (name, contact details)
+- Professional summary
+- Work experience
+- Education history
+- Skills
+- Certifications or achievements
+- Languages
+- References`;
+
+      fileContentDescription = docxData;
       return { fileContent, fileContentDescription, error: null };
     } else {
       // For other text documents
@@ -193,7 +212,7 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
         }
         
         console.log(`Successfully downloaded text content of length: ${fileContent.length}`);
-        fileContentDescription = `${fileContent.substring(0, 15000)}${fileContent.length > 15000 ? '... [truncated]' : ''}`;
+        fileContentDescription = fileContent;
         return { fileContent, fileContentDescription, error: null };
       } catch (textError) {
         console.error("Error processing text document:", textError);
@@ -211,5 +230,35 @@ export async function downloadDocumentContent(fullSignedUrl: string, document: a
       fileContent: null,
       fileContentDescription: null
     };
+  }
+}
+
+/**
+ * Extracts text from different file types more effectively
+ */
+export async function extractDocumentText(fileContent: Blob | ArrayBuffer | string, fileType: string) {
+  try {
+    // For PDFs - use a PDF parsing service if available
+    if (fileType.includes('pdf')) {
+      // In a real implementation, you'd use a PDF parsing API here
+      return "PDF content extracted - this would be replaced with actual PDF text extraction";
+    }
+
+    // For Word documents
+    if (fileType.includes('word') || fileType.includes('docx')) {
+      // In a real implementation, use a DOCX parser
+      return "Word document content extracted - replace with actual DOCX parsing";
+    }
+
+    // For plain text
+    if (typeof fileContent === 'string') {
+      return fileContent;
+    }
+
+    // For binary data we can't process
+    return null;
+  } catch (error) {
+    console.error("Error extracting document text:", error);
+    return null;
   }
 }

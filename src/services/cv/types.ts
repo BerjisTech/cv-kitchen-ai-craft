@@ -1,38 +1,45 @@
 
-export type ExtractedCVData = {
-  fullName?: string;
-  title?: string;
-  contact?: {
-    email?: string;
+export interface ProfileData {
+  personal_info: {
+    full_name?: string;
+    email?: string; 
     phone?: string;
     location?: string;
+    linkedin_url?: string;
     website?: string;
-    linkedin?: string;
-    github?: string;
+    github_url?: string;
   };
   summary?: string;
-  skills?: string[];
-  experience?: Array<{
-    company?: string;
-    role?: string;
-    start?: string;
-    end?: string | null;
+  work_experience: Array<{
+    company: string;
+    role: string;
+    start_date: string;
+    end_date?: string;
     description?: string;
+    source?: string;
   }>;
-  education?: Array<{
-    school?: string;
+  education: Array<{
+    institution: string;
     degree?: string;
-    start?: string;
-    end?: string | null;
+    start_year?: string;
+    end_year?: string;
     description?: string;
+    source?: string;
   }>;
-  languages?: Array<{
-    language?: string;
-    proficiency?: string;
+  skills: Array<{
+    name: string;
+    level?: number;
+    category?: string;
   }>;
-  certifications?: Array<{
-    name?: string;
-    issuer?: string;
+  certifications: Array<{
+    name: string;
+    issuer: string;
     date?: string;
   }>;
-};
+  languages: Array<{
+    language: string;
+    level?: string;
+  }>;
+}
+
+export type ExtractedCVData = ProfileData;

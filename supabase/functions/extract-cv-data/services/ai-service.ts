@@ -23,25 +23,57 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       };
     }
 
-    // Prepare a system prompt that can handle even minimal document descriptions
-    const systemPrompt = `Extract structured data from this CV/resume content or description. 
-    Even if the content is minimal (like just a filename), make reasonable guesses based on the available information.
-    Include the following fields:
-    - fullName: The candidate's full name
-    - title: Professional title/role
-    - contact: Object containing email, phone, location, website, LinkedIn URL, GitHub URL
-    - summary: A concise professional summary
-    - skills: Array of skills mentioned
-    - experience: Array of work experiences with company, role, start date, end date, and description
-    - education: Array of educational experiences with school, degree, dates, and description
-    - certifications: Array of certifications with name, issuer, and date
-    - languages: Array of languages with language name and proficiency level
-    
-    Format the data as a clean, structured JSON object. For fields not found in the content, use reasonable placeholder values based on any clues in the filename or metadata.`;
+    // Prepare a system prompt that matches our ProfileData structure
+    const systemPrompt = `Extract all possible information from this CV/resume and return it in a structured JSON format that matches this specific schema:
+
+    {
+      "personal_info": {
+        "full_name": "string",
+        "location": "string",
+        "linkedin_url": "string",
+        "website": "string",
+        "github_url": "string"
+      },
+      "summary": "string",
+      "work_experience": [{
+        "company": "string",
+        "role": "string",
+        "start_date": "string (YYYY-MM-DD or YYYY-MM)",
+        "end_date": "string (YYYY-MM-DD or YYYY-MM or null if current)",
+        "description": "string"
+      }],
+      "education": [{
+        "institution": "string",
+        "degree": "string",
+        "start_year": "string (YYYY)",
+        "end_year": "string (YYYY or null if current)",
+        "description": "string"
+      }],
+      "skills": [{
+        "name": "string",
+        "level": "number (1-5)"
+      }],
+      "certifications": [{
+        "name": "string",
+        "issuer": "string",
+        "date": "string (YYYY-MM)"
+      }],
+      "languages": [{
+        "language": "string",
+        "level": "string (basic, intermediate, fluent, native)"
+      }]
+    }
+
+    Rules:
+    1. Only extract information that is clearly present in the text
+    2. Never invent or guess missing information
+    3. For dates, use the specified formats
+    4. For skills levels, estimate based on context (default to 3 if unsure)
+    5. Return empty arrays for missing sections`;
 
     console.log("Calling OpenAI API");
     const payload = {
-      model: "gpt-4o-mini", // Using gpt-4o-mini for better performance and cost balance
+      model: "gpt-4o-mini", 
       messages: [
         {
           role: "system",
@@ -52,7 +84,8 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
           content: content
         }
       ],
-      temperature: 0.3, // Lower temperature for more consistent, factual extraction
+      response_format: { type: "json_object" },
+      temperature: 0.1,
       max_tokens: 4000
     };
 
@@ -79,48 +112,10 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
     console.log("Received response from OpenAI");
 
     try {
-      // Try to parse the response as JSON
-      const jsonStart = generatedContent.indexOf('{');
-      const jsonEnd = generatedContent.lastIndexOf('}');
-      
-      if (jsonStart >= 0 && jsonEnd > jsonStart) {
-        const jsonContent = generatedContent.substring(jsonStart, jsonEnd + 1);
-        const extractedData = JSON.parse(jsonContent);
-        console.log("Successfully parsed AI response as JSON");
-        return extractedData;
-      } else {
-        console.error("Failed to parse AI response as JSON");
-        // Fallback to creating structured JSON manually
-        const name = content.match(/name[:\s]+"?([A-Za-z\s\-]+)"?/i)?.[1] || 
-                    content.match(/([A-Za-z\s\-]+)\s+resume/i)?.[1] || 
-                    "Unknown Name";
-                    
-        return {
-          fullName: name,
-          title: "Professional",
-          contact: {
-            email: "example@email.com",
-            phone: "",
-            location: ""
-          },
-          summary: "This CV data was automatically generated because the original document could not be properly parsed.",
-          skills: ["Communication", "Problem Solving", "Teamwork"],
-          experience: [{
-            company: "Example Company",
-            role: "Professional Role",
-            start: "2020",
-            end: "Present",
-            description: "Generated placeholder data."
-          }],
-          education: [{
-            school: "University",
-            degree: "Degree",
-            start: "2016",
-            end: "2020",
-            description: ""
-          }]
-        };
-      }
+      // Parse the JSON response
+      const extractedData = JSON.parse(generatedContent);
+      console.log("Successfully parsed AI response as JSON");
+      return extractedData;
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
       return {
