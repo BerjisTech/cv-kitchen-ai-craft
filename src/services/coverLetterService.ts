@@ -51,8 +51,17 @@ export async function createCoverLetter(coverLetterData: Partial<CoverLetter>): 
       return null;
     }
     
+    // Ensure required fields are present
+    if (!coverLetterData.title || !coverLetterData.content) {
+      toast.error("Cover letter title and content are required");
+      return null;
+    }
+    
     const newCoverLetter = {
-      ...coverLetterData,
+      title: coverLetterData.title,
+      content: coverLetterData.content,
+      position: coverLetterData.position || null,
+      company: coverLetterData.company || null,
       user_id: user.id,
       last_updated: new Date().toISOString()
     };
@@ -92,6 +101,15 @@ export async function updateCoverLetter(id: string, coverLetterData: Partial<Cov
       updated_at: new Date().toISOString(),
       last_updated: new Date().toISOString()
     };
+    
+    // Make sure title and content are present if they're being updated
+    if (updates.title === undefined && coverLetterData.title === undefined) {
+      delete updates.title;
+    }
+    
+    if (updates.content === undefined && coverLetterData.content === undefined) {
+      delete updates.content;
+    }
     
     const { data, error } = await supabase
       .from('cover_letters')

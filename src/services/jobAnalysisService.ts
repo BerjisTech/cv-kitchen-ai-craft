@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { getAllCVContext } from "./cvDataExtractorService";
+import { getAllCVContext } from "./cv/contextService";
 
 export interface JobAnalysis {
   id: string;
