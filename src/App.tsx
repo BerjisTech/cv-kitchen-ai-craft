@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeProvider';
 import { useTheme } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
-import { UserProvider, useAuth } from './context/AuthContext';
+import { UserProvider } from './context/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import Kitchen from './pages/Kitchen';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -13,30 +14,38 @@ import Shelf from './pages/Shelf';
 import { CVViewer } from './components/kitchen/CVViewer';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
+import { Skeleton } from './components/ui/skeleton';
 
 const queryClient = new QueryClient();
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return <>{children}</>;
-};
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { theme } = useTheme();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setIsDarkMode(theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    // Simulate initial loading and then hide the loader
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-background to-accent/30">
+        <div className="text-center">
+          <div className="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-primary font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -48,46 +57,14 @@ const App = () => {
                 <Route path="/" element={<Navigate to="/kitchen" />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route
-                  path="/kitchen"
-                  element={
-                    <ProtectedRoute>
-                      <Kitchen />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/shelf"
-                  element={
-                    <ProtectedRoute>
-                      <Shelf />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/kitchen/cv-viewer/:cvId"
-                  element={
-                    <ProtectedRoute>
-                      <CVViewer />
-                    </ProtectedRoute>
-                  }
-                />
+                
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/kitchen" element={<Kitchen />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/shelf" element={<Shelf />} />
+                  <Route path="/kitchen/cv-viewer/:cvId" element={<CVViewer />} />
+                </Route>
               </Routes>
               <Toaster />
             </UserProvider>
