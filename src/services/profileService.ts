@@ -54,15 +54,19 @@ export async function updateProfile(profileData: Partial<ProfileData>): Promise<
       throw new Error('Not authenticated');
     }
     
-    // Remove id, email from update data if it exists as they're not in the profiles table
+    // Extract fields that should not be sent to the profiles table
     const { id, email, phone, ...updateData } = profileData;
     
+    // Prepare data for the profiles table update
+    const profileUpdateData = {
+      ...updateData,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Update the profile
     const { data, error } = await supabase
       .from('profiles')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(profileUpdateData)
       .eq('id', user.id)
       .select()
       .single();
@@ -72,7 +76,19 @@ export async function updateProfile(profileData: Partial<ProfileData>): Promise<
       throw error;
     }
     
-    // Include email from auth.user in the returned profile data
+    // Update phone in auth.user metadata if it's included
+    if (phone !== undefined) {
+      try {
+        await supabase.auth.updateUser({
+          data: { phone }
+        });
+      } catch (metaError) {
+        console.error("Error updating user metadata:", metaError);
+        // Continue even if metadata update fails
+      }
+    }
+    
+    // Include email and phone in the returned data
     return { 
       ...data as ProfileData, 
       email: user.email,
