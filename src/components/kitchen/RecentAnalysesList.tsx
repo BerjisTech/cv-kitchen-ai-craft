@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { AnalysisItem } from '@/components/kitchen/AnalysisItem';
 import { JobAnalysis } from '@/services/jobAnalysisService';
+import { getTailoredCV } from '@/services/tailoredCVService';
+import { FileText } from 'lucide-react';
 
 interface RecentAnalysesListProps {
   analyses: JobAnalysis[];
@@ -13,6 +15,25 @@ export const RecentAnalysesList: React.FC<RecentAnalysesListProps> = ({
   analyses, 
   onViewAnalysis 
 }) => {
+  const [analysesWithCVs, setAnalysesWithCVs] = useState<{[key: string]: boolean}>({});
+  
+  useEffect(() => {
+    const checkForCVs = async () => {
+      const cvStatus: {[key: string]: boolean} = {};
+      
+      for (const analysis of analyses) {
+        const cv = await getTailoredCV(analysis.id);
+        cvStatus[analysis.id] = !!cv;
+      }
+      
+      setAnalysesWithCVs(cvStatus);
+    };
+    
+    if (analyses.length > 0) {
+      checkForCVs();
+    }
+  }, [analyses]);
+  
   if (analyses.length === 0) return null;
   
   return (
@@ -27,6 +48,7 @@ export const RecentAnalysesList: React.FC<RecentAnalysesListProps> = ({
               timeAgo={new Date(analysis.created_at).toLocaleDateString()}
               onClick={() => onViewAnalysis(analysis.id)}
               aria-label={`View analysis for ${analysis.job_description.substring(0, 20)}...`}
+              hasCV={analysesWithCVs[analysis.id]}
             />
             {analysis !== analyses[analyses.length - 1] && (
               <div className="border-t border-border"></div>

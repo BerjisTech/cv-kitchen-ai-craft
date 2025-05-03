@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { JobAnalysis } from '@/services/jobAnalysisService';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, FileText, Download } from 'lucide-react';
+import { generateTailoredCV, getTailoredCV, TailoredCV } from '@/services/tailoredCVService';
+import { toast } from '@/components/ui/sonner';
 
 interface AnalysisDetailProps {
   analysis: JobAnalysis | null;
@@ -11,6 +13,23 @@ interface AnalysisDetailProps {
 }
 
 export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClose }) => {
+  const [isGeneratingCV, setIsGeneratingCV] = useState(false);
+  const [tailoredCV, setTailoredCV] = useState<TailoredCV | null>(null);
+
+  useEffect(() => {
+    // Check if we already have a tailored CV for this analysis
+    const checkExistingCV = async () => {
+      if (analysis) {
+        const existingCV = await getTailoredCV(analysis.id);
+        if (existingCV) {
+          setTailoredCV(existingCV);
+        }
+      }
+    };
+    
+    checkExistingCV();
+  }, [analysis]);
+
   if (!analysis) return null;
 
   // Split the analysis text into sections based on common headings
@@ -36,6 +55,24 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
     });
   };
 
+  const handleGenerateCV = async () => {
+    if (!analysis) return;
+    
+    setIsGeneratingCV(true);
+    try {
+      const result = await generateTailoredCV(analysis.job_description, analysis.id);
+      if (result) {
+        setTailoredCV(result);
+        toast.success("CV has been generated successfully!");
+      }
+    } catch (error) {
+      console.error("Error generating CV:", error);
+      toast.error("Failed to generate CV");
+    } finally {
+      setIsGeneratingCV(false);
+    }
+  };
+
   return (
     <Card className="p-5 mb-6 relative">
       <div className="flex justify-between items-center mb-4">
@@ -57,6 +94,25 @@ export const AnalysisDetail: React.FC<AnalysisDetailProps> = ({ analysis, onClos
         <div className="bg-muted/20 rounded-md p-4">
           {renderAnalysisContent()}
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2">
+        {tailoredCV ? (
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => window.open(`/kitchen/cv-viewer/${tailoredCV.id}`, '_blank')}
+          >
+            <FileText className="mr-2 h-4 w-4" /> View Generated CV
+          </Button>
+        ) : (
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700" 
+            onClick={handleGenerateCV}
+            disabled={isGeneratingCV}
+          >
+            <FileText className="mr-2 h-4 w-4" /> {isGeneratingCV ? "Generating CV..." : "Generate CV for This Job"}
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 text-xs text-muted-foreground">

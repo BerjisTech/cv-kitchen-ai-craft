@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload } from 'lucide-react';
+import { Upload, FileText } from 'lucide-react';
 import { CareerIngredientCard } from '@/components/kitchen/CareerIngredientCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +9,6 @@ export const CareerIngredientsSection: React.FC = () => {
   const navigate = useNavigate();
   
   const handleEditAll = () => {
-    // You can customize this to navigate to a specific management page
     navigate('/kitchen/experience');
   };
   
@@ -25,7 +24,7 @@ export const CareerIngredientsSection: React.FC = () => {
         <Button variant="link" className="text-blue-500 p-0" onClick={handleEditAll}>Edit All</Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <CareerIngredientCard 
           title="Experience"
           count={3}
@@ -46,6 +45,14 @@ export const CareerIngredientsSection: React.FC = () => {
           description="Technical and soft skills accumulated"
           accentColor="amber"
           routePath="/kitchen/skills"
+        />
+        
+        <CareerIngredientCard 
+          title="Generated CVs"
+          count={0} // This would be dynamic in a real implementation
+          description="Your tailored CVs for job applications"
+          routePath="/shelf"
+          icon={<FileText className="h-4 w-4" />}
         />
       </div>
     </div>

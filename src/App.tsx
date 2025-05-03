@@ -1,91 +1,101 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { ThemeProvider } from './components/ThemeProvider';
+import { useTheme } from 'next-themes';
+import { Toaster } from '@/components/ui/toaster';
+import { UserProvider } from './context/AuthContext';
+import LandingPage from './pages/LandingPage';
+import SignUp from './pages/SignUp';
+import SignIn from './pages/SignIn';
+import Kitchen from './pages/Kitchen';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import Shelf from './pages/Shelf';
+import { useAuth } from './context/AuthContext';
+import { CVViewer } from "./components/kitchen/CVViewer";
 
-import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/context/ThemeProvider";
-import { AuthProvider } from "@/context/AuthContext";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Kitchen from "./pages/Kitchen";
-import Experience from "./pages/kitchen/Experience";
-import Education from "./pages/kitchen/Education";
-import Skills from "./pages/kitchen/Skills";
-import Shelf from "./pages/Shelf";
-import NotFound from "./pages/NotFound";
-import Analytics from "./pages/Analytics";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import PublicProfile from "./pages/PublicProfile";
-import Auth from "./pages/Auth";
-import AuthCallback from "./pages/AuthCallback";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
-
-// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
-const App: React.FC = () => {
-  return (
-    <React.StrictMode>
-      <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <AuthProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
 
-                  {/* Protected Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/kitchen" element={<Kitchen />} />
-                    <Route path="/kitchen/experience" element={<Experience />} />
-                    <Route path="/kitchen/education" element={<Education />} />
-                    <Route path="/kitchen/skills" element={<Skills />} />
-                    <Route path="/shelf" element={<Shelf />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    
-                    {/* Recruiter Routes */}
-                    <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
-                    
-                    {/* Admin Routes */}
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin/analytics" element={<AdminDashboard />} />
-                    <Route path="/admin/users" element={<AdminDashboard />} />
-                    <Route path="/admin/jobs" element={<AdminDashboard />} />
-                    <Route path="/admin/billing" element={<AdminDashboard />} />
-                    <Route path="/admin/ai" element={<AdminDashboard />} />
-                    <Route path="/admin/content" element={<AdminDashboard />} />
-                    <Route path="/admin/roles" element={<AdminDashboard />} />
-                    <Route path="/admin/communications" element={<AdminDashboard />} />
-                    <Route path="/admin/system" element={<AdminDashboard />} />
-                  </Route>
-                  
-                  {/* Public profile route with username parameter */}
-                  <Route path="/u/:username" element={<PublicProfile />} />
-                  
-                  {/* Legacy route, will redirect to username-based URL */}
-                  <Route path="/public-profile" element={<PublicProfile />} />
-                  
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </TooltipProvider>
-            </AuthProvider>
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const App = () => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    setIsDarkMode(theme === 'dark');
+  }, [theme]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <div className={`app ${isDarkMode ? 'dark' : ''}`}>
+          <BrowserRouter>
+            <UserProvider>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/signin" element={<SignIn />} />
+                <Route
+                  path="/kitchen"
+                  element={
+                    <ProtectedRoute>
+                      <Kitchen />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/shelf"
+                  element={
+                    <ProtectedRoute>
+                      <Shelf />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kitchen/cv-viewer/:cvId"
+                  element={
+                    <ProtectedRoute>
+                      <CVViewer />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+              <Toaster />
+            </UserProvider>
           </BrowserRouter>
-        </QueryClientProvider>
+        </div>
       </ThemeProvider>
-    </React.StrictMode>
+    </QueryClientProvider>
   );
 };
 
