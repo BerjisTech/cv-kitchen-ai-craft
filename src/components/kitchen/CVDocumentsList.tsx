@@ -30,6 +30,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
 }) => {
   const [processingDocs, setProcessingDocs] = useState<{ [key: string]: boolean }>({});
   const [deletingDocs, setDeletingDocs] = useState<{ [key: string]: boolean }>({});
+  const [processingAllDocs, setProcessingAllDocs] = useState(false);
   
   const handleDelete = async (id: string) => {
     setDeletingDocs(prev => ({ ...prev, [id]: true }));
@@ -59,6 +60,42 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     }
   };
   
+  const handleExtractAllData = async () => {
+    if (documents.length === 0) {
+      toast.info('No CVs available to extract data from');
+      return;
+    }
+    
+    setProcessingAllDocs(true);
+    toast.info(`Processing ${documents.length} CVs, please wait...`);
+    
+    try {
+      // Process CVs one by one
+      let successCount = 0;
+      for (const doc of documents) {
+        try {
+          await onExtractData(doc.id);
+          successCount++;
+        } catch (error) {
+          console.error(`Error processing CV ${doc.filename}:`, error);
+        }
+      }
+      
+      if (successCount === documents.length) {
+        toast.success(`Successfully extracted data from all ${successCount} CVs!`);
+      } else if (successCount > 0) {
+        toast.success(`Successfully processed ${successCount} out of ${documents.length} CVs.`);
+      } else {
+        toast.error('Failed to extract data from any CVs.');
+      }
+    } catch (error) {
+      console.error('Error processing CVs:', error);
+      toast.error('Failed to extract data from CVs');
+    } finally {
+      setProcessingAllDocs(false);
+    }
+  };
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy');
@@ -69,7 +106,21 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3">Uploaded CVs</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-semibold">Uploaded CVs</h2>
+        {documents.length > 1 && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="gap-2"
+            onClick={handleExtractAllData}
+            disabled={processingAllDocs}
+          >
+            <RefreshCw size={16} className={processingAllDocs ? 'animate-spin' : ''} />
+            Extract All CVs
+          </Button>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isLoading ? (
           Array(2).fill(0).map((_, index) => (
@@ -115,7 +166,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
                         variant="outline"
                         size="icon"
                         onClick={() => handleExtractData(doc.id)}
-                        disabled={processingDocs[doc.id]}
+                        disabled={processingDocs[doc.id] || processingAllDocs}
                       >
                         <RefreshCw size={18} className={processingDocs[doc.id] ? 'animate-spin' : ''} />
                       </Button>
@@ -133,7 +184,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
                         variant="outline"
                         size="icon"
                         onClick={() => handleDelete(doc.id)}
-                        disabled={deletingDocs[doc.id]}
+                        disabled={deletingDocs[doc.id] || processingAllDocs}
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -151,6 +202,9 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
       {documents.length > 0 && (
         <div className="mt-3 text-sm text-muted-foreground">
           <p>Click the <RefreshCw className="inline h-3 w-3" /> button to extract data from your CV and update your profile info, skills, and experience.</p>
+          {documents.length > 1 && (
+            <p className="mt-1">Or use the "Extract All CVs" button to process all CVs at once.</p>
+          )}
         </div>
       )}
     </div>

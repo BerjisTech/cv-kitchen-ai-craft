@@ -55,8 +55,8 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (skillsData) {
-          // Safely cast the data
-          const typedSkills = skillsData as unknown as UserSkill[];
+          // Use type assertion with any as an intermediate step
+          const typedSkills = skillsData as any[] as UserSkill[];
           setSkills(typedSkills);
         }
         
@@ -71,8 +71,8 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (languagesData && languagesData.length > 0) {
-          // Safely cast the data
-          const typedLanguages = languagesData as unknown as UserLanguage[];
+          // Use type assertion with any as an intermediate step
+          const typedLanguages = languagesData as any[] as UserLanguage[];
           setLanguages(typedLanguages);
         } else {
           // Default sample languages if none are found
@@ -93,8 +93,8 @@ export const ProfileSkills: React.FC<ProfileSkillsProps> = ({ profile }) => {
         }
           
         if (certificationsData && certificationsData.length > 0) {
-          // Safely cast the data
-          const typedCertifications = certificationsData as unknown as UserCertification[];
+          // Use type assertion with any as an intermediate step
+          const typedCertifications = certificationsData as any[] as UserCertification[];
           setCertifications(typedCertifications);
         } else {
           // Default sample certifications if none are found
