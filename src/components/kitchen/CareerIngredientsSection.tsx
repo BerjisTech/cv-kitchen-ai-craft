@@ -3,8 +3,16 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload } from 'lucide-react';
 import { CareerIngredientCard } from '@/components/kitchen/CareerIngredientCard';
+import { useNavigate } from 'react-router-dom';
 
 export const CareerIngredientsSection: React.FC = () => {
+  const navigate = useNavigate();
+  
+  const handleEditAll = () => {
+    // You can customize this to navigate to a specific management page
+    navigate('/kitchen/experience');
+  };
+  
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -14,7 +22,7 @@ export const CareerIngredientsSection: React.FC = () => {
           </div>
           <h3 className="font-medium text-lg">Career Ingredients</h3>
         </div>
-        <Button variant="link" className="text-blue-500 p-0">Edit All</Button>
+        <Button variant="link" className="text-blue-500 p-0" onClick={handleEditAll}>Edit All</Button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

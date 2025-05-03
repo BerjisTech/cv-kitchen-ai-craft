@@ -8,6 +8,7 @@ import { RecentAnalysesList } from '@/components/kitchen/RecentAnalysesList';
 import { ConnectionOptions } from '@/components/kitchen/ConnectionOptions';
 import { CareerIngredientsSection } from '@/components/kitchen/CareerIngredientsSection';
 import { DocumentsGrid } from '@/components/kitchen/DocumentsGrid';
+import { LinkedInImport } from '@/components/kitchen/LinkedInImport';
 import { useAuth } from '@/context/AuthContext';
 import { getUserConnections } from '@/services/socialConnectionService';
 import { getUserDocuments, UserDocument } from '@/services/documentService';
@@ -107,6 +108,9 @@ const Kitchen = () => {
           documents={userDocuments} 
           onDocumentDeleted={handleDocumentDeleted} 
         />
+        
+        {/* LinkedIn Data Import */}
+        <LinkedInImport />
         
         {/* Connection Options */}
         <ConnectionOptions 

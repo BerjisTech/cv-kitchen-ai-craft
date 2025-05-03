@@ -26,8 +26,11 @@ export const RecentAnalysesList: React.FC<RecentAnalysesListProps> = ({
               title={analysis.job_description.substring(0, 60) + (analysis.job_description.length > 60 ? '...' : '')}
               timeAgo={new Date(analysis.created_at).toLocaleDateString()}
               onClick={() => onViewAnalysis(analysis.id)}
+              aria-label={`View analysis for ${analysis.job_description.substring(0, 20)}...`}
             />
-            <div className="border-t border-border"></div>
+            {analysis !== analyses[analyses.length - 1] && (
+              <div className="border-t border-border"></div>
+            )}
           </React.Fragment>
         ))}
       </Card>

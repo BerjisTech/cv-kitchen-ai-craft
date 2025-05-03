@@ -36,6 +36,42 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_profiles: {
+        Row: {
+          courses_data: Json | null
+          created_at: string
+          education_data: Json | null
+          id: string
+          positions_data: Json | null
+          profile_data: Json
+          skills_data: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          courses_data?: Json | null
+          created_at?: string
+          education_data?: Json | null
+          id?: string
+          positions_data?: Json | null
+          profile_data: Json
+          skills_data?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          courses_data?: Json | null
+          created_at?: string
+          education_data?: Json | null
+          id?: string
+          positions_data?: Json | null
+          profile_data?: Json
+          skills_data?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
