@@ -20,9 +20,10 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { jobDescription, userId } = await req.json();
+    const requestData = await req.json();
+    const { job_description, cv_context, userId } = requestData;
 
-    if (!jobDescription) {
+    if (!job_description) {
       throw new Error('Job description is required');
     }
 
@@ -54,7 +55,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Analyze this job description and provide insights on the key skills, qualifications, and experience needed. Also suggest how a candidate could tailor their CV to match this job better. Format your response with clear sections. Job description:\n\n${jobDescription}`
+            content: `Analyze this job description and provide insights on the key skills, qualifications, and experience needed. Also suggest how a candidate could tailor their CV to match this job better. Format your response with clear sections. Job description:\n\n${job_description}`
           }
         ],
         temperature: 0.7,
@@ -82,7 +83,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         user_id: userId,
-        job_description: jobDescription,
+        job_description: job_description,
         analysis: analysisResult.choices[0].message.content,
         created_at: timestamp,
         updated_at: timestamp

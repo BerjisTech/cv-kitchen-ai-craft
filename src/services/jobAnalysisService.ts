@@ -34,7 +34,8 @@ export async function analyzeJobDescription(jobDescription: string): Promise<Job
     const { data, error } = await supabase.functions.invoke('analyze-job-description', {
       body: { 
         job_description: jobDescription,
-        cv_context: cvContext
+        cv_context: cvContext,
+        userId: user.id // Add userId to ensure it's included in the request
       }
     });
 
