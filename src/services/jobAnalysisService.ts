@@ -46,6 +46,7 @@ export async function getRecentAnalyses(): Promise<JobAnalysis[]> {
     
     if (!user) return [];
     
+    // Using explicit type casting to fix the type issues
     const { data, error } = await supabase
       .from('job_analyses')
       .select('*')
@@ -64,6 +65,7 @@ export async function getRecentAnalyses(): Promise<JobAnalysis[]> {
 
 export async function getAnalysisById(id: string): Promise<JobAnalysis | null> {
   try {
+    // Using explicit type casting to fix the type issues
     const { data, error } = await supabase
       .from('job_analyses')
       .select('*')
