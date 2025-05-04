@@ -15,11 +15,14 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
       return false;
     }
 
+    toast.info("Enhancing your profile with CV data...", { duration: 5000 });
+
     // Call the Extract CV Data edge function with enhance flag
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
       body: { 
         userId: user.id,
-        enhanceProfile: true
+        enhanceProfile: true,
+        forceReExtract: true // Always force re-extraction to ensure fresh data
       }
     });
 
@@ -36,7 +39,7 @@ export const enhanceUserProfile = async (): Promise<boolean> => {
     }
 
     if (data && data.success) {
-      console.log("Profile enhanced successfully with CV data");
+      toast.success("Profile enhanced successfully with CV data");
       return true;
     }
 

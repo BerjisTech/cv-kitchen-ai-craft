@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 /**
@@ -260,6 +259,46 @@ export async function extractDocumentText(fileContent: Blob | ArrayBuffer | stri
     return null;
   } catch (error) {
     console.error("Error extracting document text:", error);
+    return null;
+  }
+}
+
+/**
+ * Extract text from a document by ID
+ */
+export async function extractTextFromDocument(supabaseUrl: string, supabaseKey: string, documentId: string, abortSignal?: AbortSignal) {
+  console.log(`Extracting text from document ${documentId}`);
+  
+  try {
+    // Get document details
+    const document = await getDocument(supabaseUrl, supabaseKey, documentId);
+    
+    if (!document) {
+      console.error("Document not found");
+      return null;
+    }
+    
+    // Get document URL
+    const fileUrl = await getSignedURL(supabaseUrl, supabaseKey, document.filepath);
+    
+    if (!fileUrl) {
+      console.error("Failed to get document URL");
+      return null;
+    }
+    
+    // Download document content
+    const { fileContent, fileContentDescription, error } = await downloadDocumentContent(fileUrl, document);
+    
+    if (error || (!fileContent && !fileContentDescription)) {
+      console.error("Error downloading document content:", error);
+      return null;
+    }
+    
+    // For now, we'll use the description as the text content
+    // In a production environment, you'd use specialized libraries to extract text from different file types
+    return fileContentDescription || "No text content could be extracted";
+  } catch (error) {
+    console.error("Error extracting text from document:", error);
     return null;
   }
 }

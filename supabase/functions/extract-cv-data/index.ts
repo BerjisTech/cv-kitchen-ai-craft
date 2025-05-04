@@ -130,6 +130,7 @@ async function processDocument(documentId: string, userId: string, abortSignal: 
  */
 async function enhanceUserProfile(userId: string, abortSignal: AbortSignal) {
   // Import services dynamically to reduce cold start time
+  // Fix: Import extractTextFromDocument at the beginning of the function
   const { extractTextFromDocument } = await import("./services/document-service.ts");
   const { extractDataWithAI } = await import("./services/ai-service.ts");
   
