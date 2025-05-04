@@ -26,24 +26,25 @@ serve(async (req) => {
       const documentId = requestData.documentId;
       const userId = requestData.userId;
       
-      if (!documentId && !userId && !requestData.updateProfile) {
-        console.error("Missing required parameters: documentId or userId");
+      if (!userId && !requestData.updateProfile && !requestData.enhanceProfile) {
+        console.error("Missing required parameter: userId");
         clearTimeout(timeoutId);
         return new Response(
-          JSON.stringify({ error: 'Missing required parameters: documentId or userId' }),
+          JSON.stringify({ error: 'Missing required parameter: userId' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       // If profile update with CV data is requested
-      if (requestData.updateProfile && requestData.cvData && userId) {
-        console.log(`Processing profile update with CV data for userId: ${userId}`);
+      if (requestData.updateProfile && requestData.cvData && requestData.userId) {
+        console.log(`Processing profile update with CV data for userId: ${requestData.userId}`);
+        console.log("CV data received:", JSON.stringify(requestData.cvData).substring(0, 200) + "...");
         
         // Update user profile with the provided CV data
         const updateResult = await updateUserProfile(
           Deno.env.get('SUPABASE_URL') || '', 
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', 
-          userId, 
+          requestData.userId, 
           requestData.cvData
         );
         
@@ -135,6 +136,15 @@ async function processDocument(documentId: string, userId: string, signal: Abort
     const existingData = await checkExistingExtractedData(supabaseUrl, supabaseKey, documentId, userId);
     if (existingData) {
       console.log("Using cached extracted data");
+      
+      // Also update the user's profile with this data
+      try {
+        console.log("Updating user profile with cached data");
+        await updateUserProfile(supabaseUrl, supabaseKey, userId, existingData);
+      } catch (updateError) {
+        console.error("Error updating user profile with cached data:", updateError);
+      }
+      
       return new Response(
         JSON.stringify(existingData),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -223,6 +233,7 @@ async function processDocument(documentId: string, userId: string, signal: Abort
   
   // Update user profile data
   try {
+    console.log("Updating user profile with extracted data");
     await updateUserProfile(supabaseUrl, supabaseKey, userId, extractedData);
   } catch (updateError) {
     console.error("Error updating user profile:", updateError);
@@ -259,24 +270,46 @@ async function enhanceUserProfile(userId: string, signal: AbortSignal) {
     );
   }
 
+  console.log(`Found ${cvs.length} CVs for user ${userId}`);
+
   // Process each CV
   const extractedData: any[] = [];
   
   for (const cv of cvs) {
     try {
+      console.log(`Processing CV: ${cv.id} - ${cv.filename}`);
+      
+      // Check for existing extracted data first
+      const existingData = await checkExistingExtractedData(supabaseUrl, supabaseKey, cv.id, userId);
+      if (existingData) {
+        console.log(`Using cached data for CV ${cv.id}`);
+        extractedData.push(existingData);
+        continue;
+      }
+      
       // Get signed URL for the document
       const signedUrl = await getSignedURL(supabaseUrl, supabaseKey, cv.filepath);
-      if (!signedUrl) continue;
+      if (!signedUrl) {
+        console.error(`Failed to get signed URL for ${cv.id}`);
+        continue;
+      }
       
       // Download document content
       const { fileContent, fileContentDescription, error } = 
         await downloadDocumentContent(signedUrl, cv);
       
-      if (error || !fileContentDescription) continue;
+      if (error || !fileContentDescription) {
+        console.error(`Error downloading content for ${cv.id}:`, error);
+        continue;
+      }
       
       // Extract data from the CV
+      console.log(`Extracting data from CV ${cv.id}`);
       const cvData = await extractDataWithOpenAI(fileContentDescription, signal);
-      if (cvData.error) continue;
+      if (cvData.error) {
+        console.error(`Error extracting data from ${cv.id}:`, cvData.error);
+        continue;
+      }
       
       // Store the raw extracted data in cv_extracted_data table
       await fetch(`${supabaseUrl}/rest/v1/cv_extracted_data`, {
@@ -311,6 +344,9 @@ async function enhanceUserProfile(userId: string, signal: AbortSignal) {
   // For simplicity, we'll just use the first CV's data
   // In a production system, you'd want to merge data from multiple CVs
   const profileData = extractedData[0];
+  
+  console.log(`Updating user profile with extracted data from ${extractedData.length} CVs`);
+  console.log("Profile data excerpt:", JSON.stringify(profileData).substring(0, 200) + "...");
   
   // Update user profile in database
   const updateResult = await updateUserProfile(supabaseUrl, supabaseKey, userId, profileData);

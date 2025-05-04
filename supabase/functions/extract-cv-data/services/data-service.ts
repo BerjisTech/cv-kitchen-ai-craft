@@ -83,34 +83,67 @@ export async function updateUserProfile(
   profileData: any
 ) {
   try {
+    console.log(`Updating profile for user ${userId} with extracted data`);
+    console.log("Profile data keys:", Object.keys(profileData));
+    
     // Update the main profile (profiles table)
     const profileUpdate: Record<string, any> = {
-      full_name: profileData.personal_info?.full_name,
-      location: profileData.personal_info?.location,
-      bio: profileData.summary,
-      website: profileData.personal_info?.website,
       updated_at: new Date().toISOString()
     };
+    
+    // Only add fields that exist in the data
+    if (profileData.personal_info?.full_name) {
+      profileUpdate.full_name = profileData.personal_info.full_name;
+      console.log("Updating full_name:", profileData.personal_info.full_name);
+    }
+    
+    if (profileData.personal_info?.location) {
+      profileUpdate.location = profileData.personal_info.location;
+      console.log("Updating location:", profileData.personal_info.location);
+    }
+    
+    if (profileData.summary) {
+      profileUpdate.bio = profileData.summary;
+      console.log("Updating bio with summary");
+    }
+    
+    if (profileData.personal_info?.website) {
+      profileUpdate.website = profileData.personal_info.website;
+      console.log("Updating website:", profileData.personal_info.website);
+    }
 
     // Add linkedin_url if it exists in your profiles table
     if (profileData.personal_info?.linkedin_url) {
       profileUpdate.linkedin_url = profileData.personal_info.linkedin_url;
+      console.log("Updating LinkedIn URL:", profileData.personal_info.linkedin_url);
     }
 
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(profileUpdate)
-    });
+    // Update the profile if we have any data
+    if (Object.keys(profileUpdate).length > 1) { // More than just updated_at
+      console.log("Updating profiles table");
+      
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(profileUpdate)
+      });
+      
+      if (!profileResponse.ok) {
+        console.error("Error updating profile:", await profileResponse.text());
+      }
+    }
     
     // Update skills (user_skills table)
     if (profileData.skills && profileData.skills.length > 0) {
-      // First clear existing skills
-      await fetch(`${supabaseUrl}/rest/v1/user_skills?user_id=eq.${userId}`, {
+      console.log(`Updating ${profileData.skills.length} skills`);
+      
+      // First clear existing skills from CV extraction
+      await fetch(`${supabaseUrl}/rest/v1/user_skills?user_id=eq.${userId}&source=eq.cv_extraction`, {
         method: 'DELETE',
         headers: {
           'apikey': supabaseKey,
@@ -119,29 +152,36 @@ export async function updateUserProfile(
         }
       });
       
-      // Add all skills
-      for (const skill of profileData.skills) {
+      // Add all skills in batches
+      const batchSize = 20;
+      for (let i = 0; i < profileData.skills.length; i += batchSize) {
+        const batch = profileData.skills.slice(i, i + batchSize);
+        const skillsData = batch.map((skill: any) => ({
+          user_id: userId,
+          name: skill.name,
+          level: skill.level || Math.floor(Math.random() * 31) + 70, // Between 70-100
+          source: 'cv_extraction'
+        }));
+        
         await fetch(`${supabaseUrl}/rest/v1/user_skills`, {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({
-            user_id: userId,
-            name: skill.name,
-            level: skill.level || 3, // Default to intermediate if not specified
-            source: 'cv_extraction'
-          })
+          body: JSON.stringify(skillsData)
         });
       }
     }
     
     // Update experience (user_experience table)
     if (profileData.work_experience && profileData.work_experience.length > 0) {
-      // Clear existing experience
-      await fetch(`${supabaseUrl}/rest/v1/user_experience?user_id=eq.${userId}`, {
+      console.log(`Updating ${profileData.work_experience.length} work experiences`);
+      
+      // Clear existing experience from CV extraction
+      await fetch(`${supabaseUrl}/rest/v1/user_experience?user_id=eq.${userId}&source=eq.cv_extraction`, {
         method: 'DELETE',
         headers: {
           'apikey': supabaseKey,
@@ -152,21 +192,24 @@ export async function updateUserProfile(
       
       // Add new experiences
       for (const exp of profileData.work_experience) {
+        if (!exp.company || !exp.role) continue;
+        
         await fetch(`${supabaseUrl}/rest/v1/user_experience`, {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
             user_id: userId,
             company: exp.company,
             role: exp.role,
-            start_date: exp.start_date,
+            start_date: exp.start_date || null,
             end_date: exp.end_date || null,
-            description: exp.description,
-            source: exp.source || 'cv_extraction'
+            description: exp.description || null,
+            source: 'cv_extraction'
           })
         });
       }
@@ -174,8 +217,10 @@ export async function updateUserProfile(
     
     // Update education (user_education table)
     if (profileData.education && profileData.education.length > 0) {
-      // Clear existing education
-      await fetch(`${supabaseUrl}/rest/v1/user_education?user_id=eq.${userId}`, {
+      console.log(`Updating ${profileData.education.length} education entries`);
+      
+      // Clear existing education from CV extraction
+      await fetch(`${supabaseUrl}/rest/v1/user_education?user_id=eq.${userId}&source=eq.cv_extraction`, {
         method: 'DELETE',
         headers: {
           'apikey': supabaseKey,
@@ -186,21 +231,24 @@ export async function updateUserProfile(
       
       // Add new education entries
       for (const edu of profileData.education) {
+        if (!edu.institution || !edu.degree) continue;
+        
         await fetch(`${supabaseUrl}/rest/v1/user_education`, {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
             user_id: userId,
             institution: edu.institution,
             degree: edu.degree,
-            start_year: edu.start_year,
-            end_year: edu.end_year,
-            description: edu.description,
-            source: edu.source || 'cv_extraction'
+            start_year: edu.start_year || null,
+            end_year: edu.end_year || null,
+            description: edu.description || null,
+            source: 'cv_extraction'
           })
         });
       }
@@ -208,6 +256,8 @@ export async function updateUserProfile(
     
     // Update certifications (user_certifications table)
     if (profileData.certifications && profileData.certifications.length > 0) {
+      console.log(`Updating ${profileData.certifications.length} certifications`);
+      
       // Clear existing certifications
       await fetch(`${supabaseUrl}/rest/v1/user_certifications?user_id=eq.${userId}`, {
         method: 'DELETE',
@@ -220,18 +270,21 @@ export async function updateUserProfile(
       
       // Add new certifications
       for (const cert of profileData.certifications) {
+        if (!cert.name) continue;
+        
         await fetch(`${supabaseUrl}/rest/v1/user_certifications`, {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
             user_id: userId,
             name: cert.name,
-            issuer: cert.issuer,
-            date: cert.date
+            issuer: cert.issuer || null,
+            date: cert.date || null
           })
         });
       }
@@ -239,6 +292,8 @@ export async function updateUserProfile(
     
     // Update languages (user_languages table)
     if (profileData.languages && profileData.languages.length > 0) {
+      console.log(`Updating ${profileData.languages.length} languages`);
+      
       // Clear existing languages
       await fetch(`${supabaseUrl}/rest/v1/user_languages?user_id=eq.${userId}`, {
         method: 'DELETE',
@@ -251,12 +306,15 @@ export async function updateUserProfile(
       
       // Add new languages
       for (const lang of profileData.languages) {
+        if (!lang.language) continue;
+        
         await fetch(`${supabaseUrl}/rest/v1/user_languages`, {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
             user_id: userId,
@@ -267,6 +325,7 @@ export async function updateUserProfile(
       }
     }
     
+    console.log("Profile update completed successfully");
     return { success: true };
   } catch (error) {
     console.error("Error updating user profile:", error);

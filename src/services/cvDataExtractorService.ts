@@ -58,6 +58,8 @@ export async function updateProfileWithCVData(cvData: any) {
       return false;
     }
     
+    console.log("Sending CV data for profile update:", cvData);
+    
     // Call the extract-cv-data function with update flag
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
       body: { 
@@ -101,6 +103,8 @@ export async function enhanceUserProfile(): Promise<boolean> {
       return false;
     }
     
+    console.log("Enhancing profile for user:", user.id);
+    
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
       body: {
         enhanceProfile: true,
@@ -138,6 +142,17 @@ export async function extractCVDataAdvanced(documentIds: string[]) {
   }
   
   try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("Error getting current user:", userError);
+      toast.error("Could not identify the current user");
+      return null;
+    }
+    
+    console.log("Processing advanced extraction for documents:", documentIds);
+    
     // Get the documents details
     const { data: documents, error: documentsError } = await supabase
       .from('user_documents')
@@ -184,7 +199,10 @@ export async function extractCVDataAdvanced(documentIds: string[]) {
     toast.info(`Processing ${validFiles.length} documents with advanced AI analysis...`);
     
     const { data, error } = await supabase.functions.invoke('extract-cv-data-advanced', {
-      body: { files: validFiles }
+      body: { 
+        files: validFiles,
+        userId: user.id  // Include userId in the request
+      }
     });
     
     if (error) {
@@ -205,6 +223,7 @@ export async function extractCVDataAdvanced(documentIds: string[]) {
       return null;
     }
     
+    console.log("Successfully processed documents, data:", data);
     toast.success(`Successfully processed ${validFiles.length} documents!`);
     return data;
   } catch (error) {

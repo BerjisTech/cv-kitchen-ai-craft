@@ -70,7 +70,8 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
     2. Never invent or guess missing information
     3. For dates, use the specified formats
     4. For skills levels, estimate based on context (default to 3 if unsure)
-    5. Return empty arrays for missing sections`;
+    5. Return empty arrays for missing sections
+    6. Be thorough and comprehensive - extract ALL skills, experience, education, and other information present in the CV`;
 
     console.log("Calling OpenAI API");
     const payload = {
@@ -116,6 +117,12 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       // Parse the JSON response
       const extractedData = JSON.parse(generatedContent);
       console.log("Successfully parsed AI response as JSON");
+      console.log("Extracted data sections:", Object.keys(extractedData));
+      
+      // Check if we got all the expected data sections
+      if (!extractedData.skills || !extractedData.work_experience || !extractedData.education) {
+        console.warn("Some expected data sections are missing from the AI response");
+      }
       
       // Ensure the parsed data has the required structure
       const validatedData: ExtractedCVData = {
