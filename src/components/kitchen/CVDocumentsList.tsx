@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { FileText, Trash2, RefreshCw, Sparkles } from 'lucide-react';
+import { FileText, Trash2, RefreshCw, Sparkles, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UserDocument } from '@/services/documentService';
@@ -13,7 +14,15 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
-import { extractCVData, updateProfileWithCVData, enhanceUserProfile } from '@/services/cvDataExtractorService';
+import { 
+  extractCVData, 
+  updateProfileWithCVData, 
+  enhanceUserProfile,
+  extractCVDataAdvanced 
+} from '@/services/cvDataExtractorService';
+import {
+  Checkbox
+} from '@/components/ui/checkbox';
 
 interface CVDocumentsListProps {
   documents: UserDocument[];
@@ -33,6 +42,7 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   const [processingAllDocs, setProcessingAllDocs] = useState(false);
   const [enhancingProfile, setEnhancingProfile] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState<{ [key: string]: number }>({});
+  const [selectedDocs, setSelectedDocs] = useState<{ [key: string]: boolean }>({});
   
   const handleDelete = async (id: string) => {
     setDeletingDocs(prev => ({ ...prev, [id]: true }));
@@ -155,6 +165,60 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     }
   };
   
+  const handleAdvancedExtraction = async () => {
+    const selectedDocIds = Object.keys(selectedDocs).filter(id => selectedDocs[id]);
+    
+    if (selectedDocIds.length === 0) {
+      toast.warning('Please select at least one CV to process');
+      return;
+    }
+    
+    setProcessingAllDocs(true);
+    toast.info(`Processing ${selectedDocIds.length} selected CVs with advanced extraction...`);
+    
+    try {
+      // Mark all selected docs as processing
+      const newProcessingDocs = { ...processingDocs };
+      selectedDocIds.forEach(id => {
+        newProcessingDocs[id] = true;
+      });
+      setProcessingDocs(newProcessingDocs);
+      
+      // Call the advanced extraction service
+      const extractedData = await extractCVDataAdvanced(selectedDocIds);
+      
+      if (extractedData) {
+        // Update the profile with the extracted data
+        const success = await updateProfileWithCVData(extractedData);
+        
+        if (success) {
+          toast.success('Profile updated with advanced CV data extraction!');
+          
+          // Reload the page to show the updated profile data
+          toast.info('Reloading page to show your enhanced profile...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          toast.error('Failed to update profile with extracted data');
+        }
+      } else {
+        toast.error('Advanced extraction failed to return usable data');
+      }
+    } catch (error) {
+      console.error('Error in advanced extraction:', error);
+      toast.error('An error occurred during advanced extraction');
+    } finally {
+      // Clear processing states
+      setProcessingAllDocs(false);
+      const newProcessingDocs = { ...processingDocs };
+      selectedDocIds.forEach(id => {
+        newProcessingDocs[id] = false;
+      });
+      setProcessingDocs(newProcessingDocs);
+    }
+  };
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy');
@@ -162,6 +226,23 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
       return 'Unknown date';
     }
   };
+  
+  const toggleSelectAll = (checked: boolean) => {
+    const newSelected: { [key: string]: boolean } = {};
+    documents.forEach(doc => {
+      newSelected[doc.id] = checked;
+    });
+    setSelectedDocs(newSelected);
+  };
+  
+  const toggleSelectDocument = (docId: string, checked: boolean) => {
+    setSelectedDocs(prev => ({
+      ...prev,
+      [docId]: checked
+    }));
+  };
+  
+  const selectedCount = Object.values(selectedDocs).filter(Boolean).length;
 
   return (
     <div>
@@ -179,6 +260,19 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
             Enhance Profile
           </Button>
           
+          {selectedCount > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-2"
+              onClick={handleAdvancedExtraction}
+              disabled={processingAllDocs || enhancingProfile}
+            >
+              <Loader2 size={16} className={processingAllDocs ? 'animate-spin' : ''} />
+              Process {selectedCount} Selected
+            </Button>
+          )}
+          
           {documents.length > 1 && (
             <Button 
               size="sm" 
@@ -193,6 +287,21 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
           )}
         </div>
       </div>
+      
+      {documents.length > 1 && (
+        <div className="flex justify-end mb-2 gap-2 items-center">
+          <label className="text-sm text-muted-foreground cursor-pointer">
+            <Checkbox 
+              checked={documents.length > 0 && selectedCount === documents.length}
+              onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+              className="mr-1"
+              disabled={isLoading || processingAllDocs}
+            /> 
+            Select all
+          </label>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isLoading ? (
           Array(2).fill(0).map((_, index) => (
@@ -215,8 +324,18 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
           documents.map(doc => (
             <Card key={doc.id} className="p-4 flex flex-col">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 text-primary rounded-md">
-                  <FileText size={32} />
+                <div className="relative">
+                  {documents.length > 1 && (
+                    <Checkbox 
+                      checked={selectedDocs[doc.id] || false}
+                      onCheckedChange={(checked) => toggleSelectDocument(doc.id, checked === true)}
+                      className="absolute -left-2 -top-2 z-10"
+                      disabled={processingDocs[doc.id] || deletingDocs[doc.id] || processingAllDocs}
+                    />
+                  )}
+                  <div className="p-2 bg-primary/10 text-primary rounded-md">
+                    <FileText size={32} />
+                  </div>
                 </div>
                 <div>
                   <h3 className="font-medium truncate" title={doc.filename}>
@@ -271,10 +390,20 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
           ))
         )}
       </div>
+      
       {documents.length > 0 && (
-        <div className="mt-3 text-sm text-muted-foreground">
-          <p>Click <Sparkles className="inline h-3 w-3" /> <strong>Enhance Profile</strong> to process your CV data and update your profile with skills, experience, and education.</p>
-          <p className="mt-1">Or use <RefreshCw className="inline h-3 w-3" /> to extract data from individual CVs.</p>
+        <div className="mt-3 text-sm text-muted-foreground space-y-1">
+          <p>
+            <Sparkles className="inline h-3 w-3" /> <strong>Enhance Profile</strong>: Process all your CVs and update your profile with skills, experience, and education.
+          </p>
+          {documents.length > 1 && (
+            <p>
+              <Check className="inline h-3 w-3" /> <strong>Select multiple CVs</strong>: Choose multiple CVs for advanced combined extraction.
+            </p>
+          )}
+          <p>
+            <RefreshCw className="inline h-3 w-3" /> Extract data from individual CVs or all CVs at once.
+          </p>
         </div>
       )}
     </div>

@@ -1,6 +1,13 @@
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
-import type { ExtractedCVData, ProfileData } from './cv/types';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/sonner";
+import { ExtractedCVData } from "./cv/types";
+
+interface CVFile {
+  id: string;
+  url: string;
+  filename: string;
+  type: string;
+}
 
 /**
  * Extracts data from a CV document using the Supabase Edge Function
@@ -596,5 +603,124 @@ export async function updateProfileWithCVData(cvData: ExtractedCVData): Promise<
     console.error("Error updating profile with CV data:", error);
     toast.error(`Failed to update profile: ${error.message || "Unknown error"}`);
     return false;
+  }
+}
+
+/**
+ * Extracts data from multiple CV documents using the Supabase Edge Function
+ */
+export async function extractCVDataAdvanced(documentIds: string[]): Promise<ExtractedCVData | null> {
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to extract CV data");
+      return null;
+    }
+    
+    // Convert document IDs to file info objects
+    const files: CVFile[] = [];
+    
+    for (const docId of documentIds) {
+      // Get document information
+      const { data: doc, error: docError } = await supabase
+        .from('user_documents')
+        .select('*')
+        .eq('id', docId)
+        .eq('user_id', user.id)
+        .single();
+        
+      if (docError || !doc) {
+        console.error(`Error fetching document ${docId}:`, docError);
+        continue;
+      }
+      
+      // Get download URL
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('career-uploads')
+        .getPublicUrl(doc.filepath);
+        
+      if (!publicUrl) {
+        console.error(`Could not get URL for ${doc.filename}`);
+        continue;
+      }
+      
+      files.push({
+        id: doc.id,
+        url: publicUrl,
+        filename: doc.filename,
+        type: doc.file_type || 'application/pdf',
+      });
+    }
+    
+    if (files.length === 0) {
+      toast.error("No valid documents found");
+      return null;
+    }
+    
+    // Call the edge function to extract data
+    toast.info("Extracting data from CVs, please wait...");
+    
+    const { data, error } = await supabase.functions.invoke('extract-cv-data-advanced', {
+      body: { files }
+    });
+    
+    if (error) {
+      console.error("Error extracting CV data:", error);
+      toast.error("Failed to extract CV data");
+      return null;
+    }
+    
+    if (!data) {
+      toast.error("No data extracted from CVs");
+      return null;
+    }
+    
+    // Convert to our internal format
+    const cvData: ExtractedCVData = {
+      personal_info: {
+        full_name: data.name,
+        email: data.email,
+        phone: data.phone,
+        location: data.location
+      },
+      summary: data.summary,
+      work_experience: data.experience.map(exp => ({
+        company: exp.company,
+        role: exp.position,
+        start_date: exp.start_date,
+        end_date: exp.end_date,
+        description: exp.description,
+      })),
+      education: data.education.map(edu => ({
+        institution: edu.institution,
+        degree: edu.degree,
+        start_year: edu.start_date,
+        end_year: edu.end_date,
+      })),
+      skills: data.skills.map(skill => ({
+        name: skill.name,
+        category: skill.category,
+        level: 3 // Default level
+      })),
+      certifications: data.certifications?.map(cert => ({
+        name: cert.name,
+        issuer: cert.issuer,
+        date: cert.date
+      })) || [],
+      languages: data.languages?.map(lang => ({
+        language: lang.name,
+        level: lang.proficiency || "intermediate"
+      })) || []
+    };
+    
+    toast.success("Successfully extracted CV data!");
+    return cvData;
+  } catch (error) {
+    console.error("Error in extractCVDataAdvanced:", error);
+    toast.error("An error occurred while extracting CV data");
+    return null;
   }
 }

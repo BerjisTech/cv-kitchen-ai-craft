@@ -1,6 +1,4 @@
 
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
 project_id = "rnjxbvsodatbxaswmiol"
 
 [api]
@@ -12,28 +10,11 @@ max_rows = 1000
 
 [db]
 port = 54322
-shadow_port = 54320
-major_version = 15
-
-[db.pooler]
-enabled = false
-port = 54329
-pool_mode = "transaction"
-default_pool_size = 20
-max_client_conn = 100
-
-[realtime]
-enabled = true
-subscription.enabled = false
 
 [studio]
 enabled = true
 port = 54323
-api_url = "https://api.supabase.io"
-
-[inbucket]
-enabled = true
-port = 54324
+api_url = "http://localhost"
 
 [storage]
 enabled = true
@@ -50,23 +31,7 @@ enable_signup = true
 
 [auth.email]
 enable_signup = true
-double_confirm_changes = true
-enable_confirmations = true
-
-[analytics]
-enabled = false
-port = 54327
-vector_port = 54328
-backend = "postgres"
-
-[experimental]
-feature_flags = []
 
 [functions]
-reload_force_polling = false
-port = 54326
-function_wait_timeout = 200
-cors = true
-
-[edge_functions]
-enabled = true
+[functions.extract-cv-data-advanced]
+verify_jwt = false
