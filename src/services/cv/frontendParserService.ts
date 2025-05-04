@@ -1,32 +1,7 @@
 
 import { toast } from '@/components/ui/sonner';
-import * as pdfjsLib from 'pdfjs-dist';
-import { OPENAI_API_KEY } from '@/config/constants';
+import { OPENAI_API_KEY, isApiKeyConfigured } from '@/config/constants';
 import OpenAI from 'openai';
-
-// Initialize PDF.js worker
-const loadPdfWorker = async () => {
-  // List of possible worker locations to try
-  const workerSources = [
-    'pdfjs-dist/build/pdf.worker.min.js', // Local
-    'https://mozilla.github.io/pdf.js/build/pdf.worker.min.js', // Mozilla CDN
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js` // CDNJS
-  ];
-
-  for (const src of workerSources) {
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = src;
-      // Test the worker with a minimal PDF load
-      await pdfjsLib.getDocument({ data: new Uint8Array() }).promise.catch(() => {});
-      console.log(`PDF.js worker loaded successfully from: ${src}`);
-      return true;
-    } catch (e) {
-      console.warn(`Failed to load PDF.js worker from ${src}`, e);
-    }
-  }
-  
-  throw new Error('All PDF.js worker sources failed to load');
-};
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -35,13 +10,18 @@ const openai = new OpenAI({
 });
 
 /**
- * Extract text from a PDF file
+ * Extract text from a PDF file using PDF.js library
  */
 export const extractTextFromPdf = async (file: File): Promise<string> => {
   console.log('Extracting text from PDF file:', file.name);
   
   try {
-    await loadPdfWorker();
+    // Dynamically import PDF.js only when needed
+    const pdfjsLib = await import('pdfjs-dist/webpack');
+    
+    // Initialize the PDF.js worker
+    const pdfWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
     
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -164,9 +144,9 @@ export const analyzeCvContent = async (cvText: string): Promise<any> => {
   console.log('Analyzing extracted CV text. Sample (first 500 chars):', cvText.slice(0, 500));
   
   try {
-    if (!OPENAI_API_KEY) {
-      console.error('OpenAI API key is not configured');
-      toast.error('OpenAI API key is not configured');
+    if (!isApiKeyConfigured()) {
+      console.error('OpenAI API key is not configured or invalid');
+      toast.error('OpenAI API key is not properly configured');
       return null;
     }
     
