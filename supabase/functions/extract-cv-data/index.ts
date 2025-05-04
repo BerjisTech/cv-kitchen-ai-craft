@@ -26,12 +26,38 @@ serve(async (req) => {
       const documentId = requestData.documentId;
       const userId = requestData.userId;
       
-      if (!documentId && !userId) {
-        console.error("Missing required parameters: documentId and userId");
+      if (!documentId && !userId && !requestData.updateProfile) {
+        console.error("Missing required parameters: documentId or userId");
         clearTimeout(timeoutId);
         return new Response(
-          JSON.stringify({ error: 'Missing required parameters: documentId and userId' }),
+          JSON.stringify({ error: 'Missing required parameters: documentId or userId' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // If profile update with CV data is requested
+      if (requestData.updateProfile && requestData.cvData && userId) {
+        console.log(`Processing profile update with CV data for userId: ${userId}`);
+        
+        // Update user profile with the provided CV data
+        const updateResult = await updateUserProfile(
+          Deno.env.get('SUPABASE_URL') || '', 
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', 
+          userId, 
+          requestData.cvData
+        );
+        
+        clearTimeout(timeoutId);
+        if (updateResult.error) {
+          return new Response(
+            JSON.stringify({ error: updateResult.error }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       

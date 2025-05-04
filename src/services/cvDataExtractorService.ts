@@ -7,9 +7,21 @@ import { toast } from '@/components/ui/sonner';
  */
 export async function extractCVData(documentId: string) {
   try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("Error getting current user:", userError);
+      toast.error("Could not identify the current user");
+      return null;
+    }
+    
     // Call the extract-cv-data function
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
-      body: { documentId }
+      body: { 
+        documentId,
+        userId: user.id 
+      }
     });
     
     if (error) {
@@ -37,10 +49,20 @@ export async function extractCVData(documentId: string) {
  */
 export async function updateProfileWithCVData(cvData: any) {
   try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("Error getting current user:", userError);
+      toast.error("Could not identify the current user");
+      return false;
+    }
+    
     // Call the extract-cv-data function with update flag
     const { data, error } = await supabase.functions.invoke('extract-cv-data', {
       body: { 
         updateProfile: true,
+        userId: user.id,
         cvData
       }
     });
