@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import type { ExtractedCVData, ProfileData } from './types';
@@ -8,51 +7,6 @@ import type { ExtractedCVData, ProfileData } from './types';
  */
 export async function extractCVData(documentId: string): Promise<ExtractedCVData | null> {
   try {
-    // First check if we already have extracted data for this document
-    let existingData = null;
-    let existingError = null;
-    
-    try {
-      const { data, error } = await supabase
-        .from('cv_extracted_data')
-        .select('extracted_data')
-        .eq('document_id', documentId)
-        .maybeSingle();
-      
-      existingData = data;
-      existingError = error;
-    } catch (e) {
-      console.error("Error checking for existing extracted data:", e);
-      toast.error("Could not check if this document has already been processed");
-      return null; // Do not proceed if we can't even check for existing data
-    }
-    
-    // If there was an error checking for existing data, stop here
-    if (existingError) {
-      console.error("Error checking for existing extracted data:", existingError);
-      toast.error(`Database error: ${existingError.message}`);
-      return null;
-    }
-    
-    // If we have existing data, use it unless it's a placeholder
-    if (existingData?.extracted_data) {
-      // Check if the extracted data contains placeholder content
-      // We need to safely cast the JSON data to our ProfileData type
-      const extractedData = existingData.extracted_data as unknown as ExtractedCVData;
-      
-      if (extractedData.summary && (
-          extractedData.summary.includes('placeholder') || 
-          extractedData.summary.includes('could not be processed')
-        )) {
-        // This is placeholder data, we should re-extract
-        console.log("Found placeholder data, re-extracting");
-      } else {
-        // Use cached data
-        console.log("Using cached CV extracted data");
-        return extractedData;
-      }
-    }
-    
     // Get the document details to pass to the function
     const { data: document, error: documentError } = await supabase
       .from('user_documents')
@@ -100,7 +54,8 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
       const { data, error } = await supabase.functions.invoke('extract-cv-data', {
         body: {
           documentId,
-          userId: user.id
+          userId: user.id,
+          forceReExtract: true // Added flag to indicate we want to force re-extraction
         }
       });
       
