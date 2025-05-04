@@ -68,6 +68,15 @@ export const extractTextFromDocx = async (file: File): Promise<string> => {
  * Extract text from a file based on its extension
  */
 export const extractText = async (file: File): Promise<string> => {
+  if (file.type === 'application/pdf') {
+    return extractTextFromPdf(file);
+  }
+  
+  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    return extractTextFromDocx(file);
+  }
+  
+  // Fallback to checking extension if MIME type doesn't work
   const extension = (file.name.split('.').pop() || '').toLowerCase();
   console.log('Detected file extension:', extension);
   
@@ -83,30 +92,33 @@ export const extractText = async (file: File): Promise<string> => {
 };
 
 /**
- * Extract text from a file URL
+ * Extract text from a direct file URL (simplified approach)
  */
 export const extractTextFromUrl = async (url: string): Promise<string> => {
-  console.log('Fetching file from URL:', url);
+  console.log('Fetching file from direct URL:', url);
   
   try {
+    // Check if URL contains PDF or DOCX
+    const isPdf = url.toLowerCase().includes('.pdf');
+    
+    if (!isPdf) {
+      console.error('Only PDF files are currently supported for direct URL extraction');
+      toast.error('Only PDF files are currently supported');
+      return '';
+    }
+    
     const response = await fetch(url);
-    console.log('Response from fetch:', response);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
     }
     
     const blob = await response.blob();
-    console.log('Fetched blob:', blob);
+    // Force the file type to PDF
+    const file = new File([blob], 'document.pdf', { type: 'application/pdf' });
     
-    const extension = url.split('.').pop()?.toLowerCase();
-    console.log('Detected file extension from URL:', extension);
-
-    const file = new File([blob], `remote-file.${extension}`, { type: blob.type });
-    console.log('Constructed File object from blob:', file);
-
-    const extracted = await extractText(file);
-    console.log('Extracted text from URL file:', extracted.slice(0, 500), '...');
+    const extracted = await extractTextFromPdf(file);
+    console.log('Extracted text from URL file (first 500 chars):', extracted.slice(0, 500), '...');
     return extracted;
   } catch (error) {
     console.error('Error extracting text from URL:', error);
@@ -196,7 +208,7 @@ ${cvText}
 };
 
 /**
- * Extract and analyze CV data from a URL
+ * Extract and analyze CV data from a direct URL
  */
 export const extractAndAnalyzeCv = async (url: string): Promise<any> => {
   try {
@@ -232,17 +244,25 @@ export const extractAndAnalyzeCv = async (url: string): Promise<any> => {
 };
 
 /**
- * Extract and analyze multiple CVs from URLs
+ * Extract and analyze multiple CVs from direct URLs
  */
 export const extractAndAnalyzeMultipleCvs = async (urls: string[]): Promise<any> => {
   try {
     console.log('Starting batch CV parsing workflow for', urls.length, 'CVs');
+    console.log('URLs to process:', urls);
     toast.info(`Processing ${urls.length} CVs...`);
     
     // Step 1: Extract text from all CVs in parallel
-    const extractedTexts = await Promise.all(
-      urls.map(url => extractTextFromUrl(url))
-    );
+    const extractionPromises = urls.map(async (url) => {
+      try {
+        return await extractTextFromUrl(url);
+      } catch (e) {
+        console.error(`Failed to extract text from ${url}:`, e);
+        return '';
+      }
+    });
+    
+    const extractedTexts = await Promise.all(extractionPromises);
     
     // Filter out any failed extractions
     const validTexts = extractedTexts.filter(text => text.length > 0);

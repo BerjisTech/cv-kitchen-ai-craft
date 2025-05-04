@@ -7,6 +7,9 @@ import { UserDocument, getDownloadUrl, deleteDocument } from '@/services/documen
 import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// Direct URL to storage bucket - same as in Kitchen.tsx
+const STORAGE_URL = `${import.meta.env.VITE_SUPABASE_URL || 'https://rnjxbvsodatbxaswmiol.supabase.co'}/storage/v1/object/public/career-uploads/`;
+
 interface CVDocumentsListProps {
   documents: UserDocument[];
   onDocumentDeleted: (id: string) => void;
@@ -49,17 +52,14 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   if (documents.length === 0) return null;
 
   const handleDownloadCV = async (filepath: string, filename: string) => {
-    const url = await getDownloadUrl(filepath);
-    if (url) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else {
-      toast.error("Failed to generate download link");
-    }
+    // Use direct URL rather than generated download URL
+    const directUrl = STORAGE_URL + filepath;
+    const a = document.createElement('a');
+    a.href = directUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
   
   const handleDeleteCV = async (id: string) => {
@@ -80,46 +80,54 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
     <div className="mt-6">
       <h3 className="font-medium text-lg mb-3">Your CV Documents</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {documents.map((doc) => (
-          <Card key={doc.id} className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-blue-500" />
+        {documents.map((doc) => {
+          const directUrl = STORAGE_URL + doc.filepath;
+          return (
+            <Card key={doc.id} className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">{doc.filename}</h4>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-medium">{doc.filename}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(doc.created_at).toLocaleDateString()}
-                </p>
+              <div className="mt-2 mb-4 text-xs text-gray-500 truncate">
+                <a href={directUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {directUrl}
+                </a>
               </div>
-            </div>
-            <div className="mt-4 flex justify-between">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleDownloadCV(doc.filepath, doc.filename)}
-              >
-                Download
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-blue-700 text-white hover:bg-blue-800"
-                onClick={() => handleExtractData(doc.id)}
-              >
-                Extract Data
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-red-500 hover:text-red-700"
-                onClick={() => handleDeleteCV(doc.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
+              <div className="mt-4 flex justify-between">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleDownloadCV(doc.filepath, doc.filename)}
+                >
+                  Download
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-blue-700 text-white hover:bg-blue-800"
+                  onClick={() => handleExtractData(doc.id)}
+                >
+                  Extract Data
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-red-500 hover:text-red-700"
+                  onClick={() => handleDeleteCV(doc.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

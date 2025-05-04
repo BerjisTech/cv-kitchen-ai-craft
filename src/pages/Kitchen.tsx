@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { FileUploader } from '@/components/kitchen/FileUploader';
@@ -22,6 +21,9 @@ import {
   extractAndAnalyzeMultipleCvs,
   updateProfileWithFrontendParsedData 
 } from '@/services/cv/frontendParserService';
+
+// Direct URL to storage bucket
+const STORAGE_URL = `${import.meta.env.VITE_SUPABASE_URL || 'https://rnjxbvsodatbxaswmiol.supabase.co'}/storage/v1/object/public/career-uploads/`;
 
 const Kitchen = () => {
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
@@ -148,20 +150,12 @@ const Kitchen = () => {
         return;
       }
       
-      // Create a signed URL to access the file
-      const { data: urlData, error: urlError } = await supabase
-        .storage
-        .from('career-uploads')
-        .createSignedUrl(document.filepath, 60); // 60-second expiry
+      // Simply combine the storage URL with the filepath directly
+      const directUrl = STORAGE_URL + document.filepath;
+      console.log('Using direct CV URL:', directUrl);
       
-      if (urlError || !urlData?.signedUrl) {
-        console.error("Error creating signed URL:", urlError);
-        toast.error("Could not access the document file.");
-        return;
-      }
-      
-      // Process the CV using the frontend parser
-      const cvData = await extractAndAnalyzeCv(urlData.signedUrl);
+      // Process the CV using the frontend parser with direct URL
+      const cvData = await extractAndAnalyzeCv(directUrl);
       
       if (cvData) {
         // Update profile with the extracted data
@@ -185,31 +179,12 @@ const Kitchen = () => {
       
       toast.info(`Processing ${cvDocuments.length} CVs...`);
       
-      // Create signed URLs for all CVs
-      const urls = await Promise.all(cvDocuments.map(async (doc) => {
-        const { data: urlData, error: urlError } = await supabase
-          .storage
-          .from('career-uploads')
-          .createSignedUrl(doc.filepath, 60); // 60-second expiry
-        
-        if (urlError || !urlData?.signedUrl) {
-          console.error("Error creating signed URL for document:", doc.id, urlError);
-          return null;
-        }
-        
-        return urlData.signedUrl;
-      }));
+      // Create direct URLs for all CVs
+      const directUrls = cvDocuments.map(doc => STORAGE_URL + doc.filepath);
+      console.log('Direct URLs for CV processing:', directUrls);
       
-      // Filter out any failed URL creations
-      const validUrls = urls.filter(url => url !== null) as string[];
-      
-      if (validUrls.length === 0) {
-        toast.error("Could not access any CV files");
-        return;
-      }
-      
-      // Process all CVs
-      const combinedData = await extractAndAnalyzeMultipleCvs(validUrls);
+      // Process all CVs with direct URLs
+      const combinedData = await extractAndAnalyzeMultipleCvs(directUrls);
       
       if (combinedData) {
         // Update profile with the extracted data
