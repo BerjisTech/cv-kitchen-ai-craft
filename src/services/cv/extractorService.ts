@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import type { ExtractedCVData, ProfileData } from './types';
@@ -55,7 +56,7 @@ export async function extractCVData(documentId: string): Promise<ExtractedCVData
         body: {
           documentId,
           userId: user.id,
-          forceReExtract: true // Added flag to indicate we want to force re-extraction
+          forceReExtract: true // Always force re-extraction to ensure fresh data
         }
       });
       
