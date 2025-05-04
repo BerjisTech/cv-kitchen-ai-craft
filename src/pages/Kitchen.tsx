@@ -15,8 +15,13 @@ import { getUserConnections } from '@/services/socialConnectionService';
 import { getUserDocuments, UserDocument } from '@/services/documentService';
 import { getRecentAnalyses, getAnalysisById, JobAnalysis } from '@/services/jobAnalysisService';
 import { toast } from '@/components/ui/sonner';
-import { updateProfileWithCVData, extractCVData } from '@/services/cvDataExtractorService';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  extractAndAnalyzeCv,
+  extractAndAnalyzeMultipleCvs,
+  updateProfileWithFrontendParsedData 
+} from '@/services/cv/frontendParserService';
 
 const Kitchen = () => {
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
@@ -129,9 +134,38 @@ const Kitchen = () => {
   const handleExtractCVData = async (documentId: string) => {
     try {
       toast.info("Extracting data from CV...");
-      const cvData = await extractCVData(documentId);
+      
+      // Get document details
+      const { data: document, error: documentError } = await supabase
+        .from('user_documents')
+        .select('*')
+        .eq('id', documentId)
+        .single();
+      
+      if (documentError || !document) {
+        console.error("Error getting document details:", documentError);
+        toast.error("Could not find document details. The document may have been deleted.");
+        return;
+      }
+      
+      // Create a signed URL to access the file
+      const { data: urlData, error: urlError } = await supabase
+        .storage
+        .from('career-uploads')
+        .createSignedUrl(document.filepath, 60); // 60-second expiry
+      
+      if (urlError || !urlData?.signedUrl) {
+        console.error("Error creating signed URL:", urlError);
+        toast.error("Could not access the document file.");
+        return;
+      }
+      
+      // Process the CV using the frontend parser
+      const cvData = await extractAndAnalyzeCv(urlData.signedUrl);
+      
       if (cvData) {
-        const success = await updateProfileWithCVData(cvData);
+        // Update profile with the extracted data
+        const success = await updateProfileWithFrontendParsedData(cvData);
         if (success) {
           toast.success("Profile updated with CV data");
         }
@@ -139,6 +173,54 @@ const Kitchen = () => {
     } catch (error) {
       console.error("Error extracting CV data:", error);
       toast.error("Failed to extract data from CV");
+    }
+  };
+  
+  const handleExtractAllCVData = async () => {
+    try {
+      if (cvDocuments.length === 0) {
+        toast.error("No CV documents found");
+        return;
+      }
+      
+      toast.info(`Processing ${cvDocuments.length} CVs...`);
+      
+      // Create signed URLs for all CVs
+      const urls = await Promise.all(cvDocuments.map(async (doc) => {
+        const { data: urlData, error: urlError } = await supabase
+          .storage
+          .from('career-uploads')
+          .createSignedUrl(doc.filepath, 60); // 60-second expiry
+        
+        if (urlError || !urlData?.signedUrl) {
+          console.error("Error creating signed URL for document:", doc.id, urlError);
+          return null;
+        }
+        
+        return urlData.signedUrl;
+      }));
+      
+      // Filter out any failed URL creations
+      const validUrls = urls.filter(url => url !== null) as string[];
+      
+      if (validUrls.length === 0) {
+        toast.error("Could not access any CV files");
+        return;
+      }
+      
+      // Process all CVs
+      const combinedData = await extractAndAnalyzeMultipleCvs(validUrls);
+      
+      if (combinedData) {
+        // Update profile with the extracted data
+        const success = await updateProfileWithFrontendParsedData(combinedData);
+        if (success) {
+          toast.success("Profile updated with combined CV data");
+        }
+      }
+    } catch (error) {
+      console.error("Error extracting all CV data:", error);
+      toast.error("Failed to process CV documents");
     }
   };
   
@@ -158,6 +240,16 @@ const Kitchen = () => {
         
         {/* Main Upload Area */}
         <FileUploader onUpload={handleUpload} />
+        
+        {/* Process All CVs Button (New) */}
+        {cvDocuments.length > 0 && (
+          <Button 
+            className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+            onClick={handleExtractAllCVData}
+          >
+            Extract Data from All CVs
+          </Button>
+        )}
         
         {/* CV Documents List */}
         {(cvDocuments.length > 0 || isLoadingCVs) && (
