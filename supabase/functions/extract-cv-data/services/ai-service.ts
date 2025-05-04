@@ -16,8 +16,10 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       };
     }
 
-    // Log the first and last part of the content to verify what we're sending to OpenAI
-    console.log(`Content for extraction (first 200 chars): ${content.substring(0, 200)}...`);
+    // Log the full content being sent to OpenAI for comprehensive debugging
+    console.log("-----BEGINNING OF CONTENT SENT TO OPENAI-----");
+    console.log(content);
+    console.log("-----END OF CONTENT SENT TO OPENAI-----");
     console.log(`Content length: ${content.length} characters`);
     
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
@@ -78,10 +80,12 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
     6. Be thorough and comprehensive - extract ALL skills, experience, education, and other information present in the CV
     7. Even if the document quality is low, try to extract whatever information you can find
     8. For work experience and education, make sure to include as much detail as possible from the text
-    9. Extract at least the name and any other information that can be found`;
+    9. Extract at least the name and any other information that can be found
+    10. IMPORTANT: Make sure to extract ALL skills mentioned in the CV, even if they're embedded in work descriptions`;
 
-    console.log("Calling OpenAI API with the following system prompt:");
+    console.log("-----SYSTEM PROMPT SENT TO OPENAI-----");
     console.log(systemPrompt);
+    console.log("-----END OF SYSTEM PROMPT-----");
     
     const payload = {
       model: "gpt-4o-mini", 
@@ -100,6 +104,10 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       max_tokens: 4000
     };
 
+    console.log("-----FULL PAYLOAD SENT TO OPENAI-----");
+    console.log(JSON.stringify(payload, null, 2));
+    console.log("-----END OF PAYLOAD-----");
+    
     console.log("Sending request to OpenAI API");
     const apiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -120,15 +128,23 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
     }
 
     const result = await apiResponse.json();
+    console.log("-----COMPLETE RAW RESPONSE FROM OPENAI-----");
+    console.log(JSON.stringify(result, null, 2));
+    console.log("-----END OF RAW RESPONSE-----");
+    
     const generatedContent = result.choices[0].message.content;
-    console.log("Received response from OpenAI");
-    console.log("Raw OpenAI response:", generatedContent);
+    console.log("-----EXTRACTED CONTENT FROM OPENAI RESPONSE-----");
+    console.log(generatedContent);
+    console.log("-----END OF EXTRACTED CONTENT-----");
 
     try {
       // Parse the JSON response
       const extractedData = JSON.parse(generatedContent);
       console.log("Successfully parsed AI response as JSON");
-      console.log("Extracted data:", JSON.stringify(extractedData, null, 2));
+      console.log("-----PARSED JSON DATA-----");
+      console.log(JSON.stringify(extractedData, null, 2));
+      console.log("-----END OF PARSED JSON DATA-----");
+      
       console.log("Extracted data sections:", Object.keys(extractedData));
       
       // Log details of each section to diagnose what's empty and what's populated
@@ -140,6 +156,10 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
       }
       console.log("Education count:", Array.isArray(extractedData.education) ? extractedData.education.length : 0);
       console.log("Skills count:", Array.isArray(extractedData.skills) ? extractedData.skills.length : 0);
+      if (Array.isArray(extractedData.skills) && extractedData.skills.length > 0) {
+        console.log("First 5 skills (or fewer if less available):", 
+          JSON.stringify(extractedData.skills.slice(0, 5)));
+      }
       
       // Check if we got all the expected data sections
       if (!extractedData.skills || !extractedData.work_experience || !extractedData.education) {
@@ -163,7 +183,9 @@ export async function extractDataWithOpenAI(content: string | null, signal?: Abo
         languages: Array.isArray(extractedData.languages) ? extractedData.languages : []
       };
       
-      console.log("Final validated data:", JSON.stringify(validatedData, null, 2));
+      console.log("-----FINAL VALIDATED DATA TO BE RETURNED-----");
+      console.log(JSON.stringify(validatedData, null, 2));
+      console.log("-----END OF FINAL VALIDATED DATA-----");
       return validatedData;
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
