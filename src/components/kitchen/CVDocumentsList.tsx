@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Trash2, RefreshCw, Sparkles, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -43,6 +42,13 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
   const [enhancingProfile, setEnhancingProfile] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState<{ [key: string]: number }>({});
   const [selectedDocs, setSelectedDocs] = useState<{ [key: string]: boolean }>({});
+  
+  // When we only have one document, automatically select it
+  useEffect(() => {
+    if (documents.length === 1) {
+      setSelectedDocs({ [documents[0].id]: true });
+    }
+  }, [documents]);
   
   const handleDelete = async (id: string) => {
     setDeletingDocs(prev => ({ ...prev, [id]: true }));
@@ -325,14 +331,12 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
             <Card key={doc.id} className="p-4 flex flex-col">
               <div className="flex items-start gap-3">
                 <div className="relative">
-                  {documents.length > 1 && (
-                    <Checkbox 
-                      checked={selectedDocs[doc.id] || false}
-                      onCheckedChange={(checked) => toggleSelectDocument(doc.id, checked === true)}
-                      className="absolute -left-2 -top-2 z-10"
-                      disabled={processingDocs[doc.id] || deletingDocs[doc.id] || processingAllDocs}
-                    />
-                  )}
+                  <Checkbox 
+                    checked={selectedDocs[doc.id] || false}
+                    onCheckedChange={(checked) => toggleSelectDocument(doc.id, checked === true)}
+                    className="absolute -left-2 -top-2 z-10"
+                    disabled={processingDocs[doc.id] || deletingDocs[doc.id] || processingAllDocs}
+                  />
                   <div className="p-2 bg-primary/10 text-primary rounded-md">
                     <FileText size={32} />
                   </div>
@@ -396,11 +400,9 @@ export const CVDocumentsList: React.FC<CVDocumentsListProps> = ({
           <p>
             <Sparkles className="inline h-3 w-3" /> <strong>Enhance Profile</strong>: Process all your CVs and update your profile with skills, experience, and education.
           </p>
-          {documents.length > 1 && (
-            <p>
-              <Check className="inline h-3 w-3" /> <strong>Select multiple CVs</strong>: Choose multiple CVs for advanced combined extraction.
-            </p>
-          )}
+          <p>
+            <Check className="inline h-3 w-3" /> <strong>Select CVs</strong>: Choose CVs for advanced combined extraction.
+          </p>
           <p>
             <RefreshCw className="inline h-3 w-3" /> Extract data from individual CVs or all CVs at once.
           </p>
