@@ -48,7 +48,7 @@ export type Database = {
       cv_extracted_data: {
         Row: {
           created_at: string
-          document_id: string
+          document_id: string | null
           extracted_data: Json
           id: string
           updated_at: string
@@ -56,7 +56,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          document_id: string
+          document_id?: string | null
           extracted_data: Json
           id?: string
           updated_at?: string
@@ -64,21 +64,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          document_id?: string
+          document_id?: string | null
           extracted_data?: Json
           id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "cv_extracted_data_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "user_documents"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       job_analyses: {
         Row: {
@@ -148,9 +140,11 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           location: string | null
+          phone: string | null
           role: string | null
           updated_at: string
           username: string | null
@@ -160,9 +154,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           location?: string | null
+          phone?: string | null
           role?: string | null
           updated_at?: string
           username?: string | null
@@ -172,9 +168,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           location?: string | null
+          phone?: string | null
           role?: string | null
           updated_at?: string
           username?: string | null
